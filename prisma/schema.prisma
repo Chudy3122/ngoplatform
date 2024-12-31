@@ -1,0 +1,494 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id            String         @id
+  username      String         @unique
+  name          String?
+  email         String?        @unique
+  files         LibraryFile[] // Pliki posiadane przez admina
+  sharedToMe    FileShare[]    @relation("SharedToAdmin") // Pliki udostępnione adminowi
+  sharedByMe    FileShare[]    @relation("SharedByAdmin") // Pliki udostępnione przez admina
+  createdEvents Event[]        @relation("AdminEvents") // Dodane
+  eventComments EventComment[] @relation("AdminComments") // Dodane
+  isOnline     Boolean   @default(false)
+  lastActive   DateTime  @default(now())
+}
+
+model Student {
+  id            String         @id
+  username      String         @unique
+  name          String?
+  surname       String
+  email         String?        @unique
+  phone         String?        @unique
+  address       String
+  img           String?
+  bloodType     String?
+  sex           UserSex
+  posts         Post[]         @relation("StudentPosts") // Dodane
+  comments      Comment[]      @relation("StudentComments") // Dodane
+  reactions     Reaction[]     @relation("StudentReactions") // Dodane
+  createdEvents Event[]        @relation("StudentEvents") // Dodane
+  eventComments EventComment[] @relation("StudentComments") // Dodane
+  createdAt     DateTime       @default(now())
+  parentId      String
+  parent        Parent         @relation(fields: [parentId], references: [id])
+  classId       Int
+  class         Class          @relation(fields: [classId], references: [id])
+  gradeId       Int
+  grade         Grade          @relation(fields: [gradeId], references: [id])
+  attendances   Attendance[]
+  results       Result[]
+  birthday      DateTime
+  files         LibraryFile[] // Pliki posiadane przez studenta
+  sharedToMe    FileShare[]    @relation("SharedToStudent") // Pliki udostępnione studentowi
+  sharedByMe    FileShare[]    @relation("SharedByStudent") // Pliki udostępnione przez studenta
+  isOnline     Boolean   @default(false)
+  lastActive   DateTime  @default(now())
+}
+
+model Teacher {
+  id            String         @id
+  username      String         @unique
+  name          String
+  surname       String
+  email         String?        @unique
+  phone         String?        @unique
+  address       String
+  img           String?
+  bloodType     String
+  sex           UserSex
+  createdAt     DateTime       @default(now())
+  subjects      Subject[]
+  lessons       Lesson[]
+  classes       Class[]
+  birthday      DateTime
+  createdEvents Event[]        @relation("TeacherEvents") // Dodane
+  eventComments EventComment[] @relation("TeacherComments") // Dodane
+  files         LibraryFile[] // Pliki posiadane przez nauczyciela
+  sharedToMe    FileShare[]    @relation("SharedToTeacher") // Pliki udostępnione nauczycielowi
+  sharedByMe    FileShare[]    @relation("SharedByTeacher") // Pliki udostępnione przez nauczyciela
+  isOnline     Boolean   @default(false)
+  lastActive   DateTime  @default(now())
+}
+
+model Parent {
+  id            String         @id
+  username      String         @unique
+  name          String
+  surname       String
+  email         String?        @unique
+  phone         String         @unique
+  address       String
+  createdAt     DateTime       @default(now())
+  students      Student[]
+  createdEvents Event[]        @relation("ParentEvents") // Dodane
+  eventComments EventComment[] @relation("ParentComments") // Dodane
+  files         LibraryFile[] // Pliki posiadane przez rodzica
+  sharedToMe    FileShare[]    @relation("SharedToParent") // Pliki udostępnione rodzicowi
+  sharedByMe    FileShare[]    @relation("SharedByParent") // Pliki udostępnione przez rodzica
+  isOnline     Boolean   @default(false)
+  lastActive   DateTime  @default(now())
+}
+
+model LibraryFile {
+  id        String   @id @default(cuid())
+  name      String
+  size      Int
+  type      String
+  fileData  Bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Właściciel pliku (tylko jeden z typów)
+  adminOwnerId   String?
+  teacherOwnerId String?
+  studentOwnerId String?
+  parentOwnerId  String?
+
+  adminOwner   Admin?   @relation(fields: [adminOwnerId], references: [id])
+  teacherOwner Teacher? @relation(fields: [teacherOwnerId], references: [id])
+  studentOwner Student? @relation(fields: [studentOwnerId], references: [id])
+  parentOwner  Parent?  @relation(fields: [parentOwnerId], references: [id])
+
+  // Udostępnienia
+  shares FileShare[]
+
+  @@index([adminOwnerId])
+  @@index([teacherOwnerId])
+  @@index([studentOwnerId])
+  @@index([parentOwnerId])
+}
+
+model FileShare {
+  id         String      @id @default(cuid())
+  fileId     String
+  file       LibraryFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  accessType AccessType
+  createdAt  DateTime    @default(now())
+  expiresAt  DateTime?
+
+  // Osoba udostępniająca (tylko jedna z typów)
+  sharedByAdminId   String?
+  sharedByTeacherId String?
+  sharedByStudentId String?
+  sharedByParentId  String?
+
+  sharedByAdmin   Admin?   @relation("SharedByAdmin", fields: [sharedByAdminId], references: [id])
+  sharedByTeacher Teacher? @relation("SharedByTeacher", fields: [sharedByTeacherId], references: [id])
+  sharedByStudent Student? @relation("SharedByStudent", fields: [sharedByStudentId], references: [id])
+  sharedByParent  Parent?  @relation("SharedByParent", fields: [sharedByParentId], references: [id])
+
+  // Osoba której udostępniono (tylko jedna z typów)
+  sharedToAdminId   String?
+  sharedToTeacherId String?
+  sharedToStudentId String?
+  sharedToParentId  String?
+
+  sharedToAdmin   Admin?   @relation("SharedToAdmin", fields: [sharedToAdminId], references: [id])
+  sharedToTeacher Teacher? @relation("SharedToTeacher", fields: [sharedToTeacherId], references: [id])
+  sharedToStudent Student? @relation("SharedToStudent", fields: [sharedToStudentId], references: [id])
+  sharedToParent  Parent?  @relation("SharedToParent", fields: [sharedToParentId], references: [id])
+
+  @@index([fileId])
+  @@index([sharedByAdminId])
+  @@index([sharedByTeacherId])
+  @@index([sharedByStudentId])
+  @@index([sharedByParentId])
+  @@index([sharedToAdminId])
+  @@index([sharedToTeacherId])
+  @@index([sharedToStudentId])
+  @@index([sharedToParentId])
+}
+
+model Grade {
+  id    Int @id @default(autoincrement())
+  level Int @unique
+
+  students Student[]
+  classess Class[]
+}
+
+model Class {
+  id       Int    @id @default(autoincrement())
+  name     String @unique
+  capacity Int
+
+  supervisorId  String?
+  supervisor    Teacher?       @relation(fields: [supervisorId], references: [id])
+  lessons       Lesson[]
+  students      Student[]
+  gradeId       Int
+  grade         Grade          @relation(fields: [gradeId], references: [id])
+  events        Event[]
+  announcements Announcement[]
+}
+
+model Subject {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  teachers Teacher[]
+  lessons  Lesson[]
+}
+
+model Lesson {
+  id        Int      @id @default(autoincrement())
+  name      String
+  day       Day
+  startTime DateTime
+  endTime   DateTime
+
+  subjectId   Int
+  subject     Subject      @relation(fields: [subjectId], references: [id])
+  classId     Int
+  class       Class        @relation(fields: [classId], references: [id])
+  teacherId   String
+  teacher     Teacher      @relation(fields: [teacherId], references: [id])
+  exams       Exam[]
+  assignments Assignment[]
+  attendances Attendance[]
+}
+
+model Exam {
+  id        Int      @id @default(autoincrement())
+  title     String
+  startTime DateTime
+  endTime   DateTime
+
+  lessonId Int
+  lesson   Lesson   @relation(fields: [lessonId], references: [id])
+  results  Result[]
+}
+
+model Assignment {
+  id        Int      @id @default(autoincrement())
+  title     String
+  startDate DateTime
+  dueDate   DateTime
+
+  lessonId Int
+  lesson   Lesson   @relation(fields: [lessonId], references: [id])
+  results  Result[]
+}
+
+model Result {
+  id    Int @id @default(autoincrement())
+  score Int
+
+  examId       Int?
+  exam         Exam?       @relation(fields: [examId], references: [id])
+  assignmentId Int?
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id])
+  studentId    String
+  student      Student     @relation(fields: [studentId], references: [id])
+}
+
+model Attendance {
+  id      Int      @id @default(autoincrement())
+  date    DateTime
+  present Boolean
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+  lessonId  Int
+  lesson    Lesson  @relation(fields: [lessonId], references: [id])
+}
+
+model Event {
+  id              Int      @id @default(autoincrement())
+  title           String
+  description     String
+  location        String
+  startTime       DateTime
+  endTime         DateTime
+  price           Float?
+  isPublic        Boolean  @default(true)
+  maxParticipants Int?
+  createdAt       DateTime @default(now())
+
+  // Author relations - tylko jeden z tych pól będzie ustawiony
+  authorStudentId String?
+  authorTeacherId String?
+  authorAdminId   String?
+  authorParentId  String?
+
+  authorStudent Student? @relation("StudentEvents", fields: [authorStudentId], references: [id])
+  authorTeacher Teacher? @relation("TeacherEvents", fields: [authorTeacherId], references: [id])
+  authorAdmin   Admin?   @relation("AdminEvents", fields: [authorAdminId], references: [id])
+  authorParent  Parent?  @relation("ParentEvents", fields: [authorParentId], references: [id])
+
+  participants EventParticipant[]
+  comments     EventComment[]
+  classId      Int?
+  class        Class?             @relation(fields: [classId], references: [id])
+
+  @@index([authorStudentId])
+  @@index([authorTeacherId])
+  @@index([authorAdminId])
+  @@index([authorParentId])
+  @@index([classId])
+}
+
+model EventParticipant {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  userId    String
+  status    String // 'GOING', 'INTERESTED', 'NOT_GOING'
+  createdAt DateTime @default(now())
+  userType  String // 'STUDENT', 'TEACHER', 'ADMIN', 'PARENT'
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+}
+
+model EventComment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+  eventId   Int
+  authorId  String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Author relations z unikalnymi nazwami dla map
+  authorStudent Student? @relation("StudentComments", fields: [authorId], references: [id], map: "EventComment_student_author_fkey")
+  authorTeacher Teacher? @relation("TeacherComments", fields: [authorId], references: [id], map: "EventComment_teacher_author_fkey")
+  authorParent  Parent?  @relation("ParentComments", fields: [authorId], references: [id], map: "EventComment_parent_author_fkey")
+  authorAdmin   Admin?   @relation("AdminComments", fields: [authorId], references: [id], map: "EventComment_admin_author_fkey")
+
+  @@index([authorId])
+  @@index([eventId])
+}
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  date        DateTime
+
+  classId Int?
+  class   Class? @relation(fields: [classId], references: [id])
+}
+
+model Message {
+  id        String        @id @default(cuid())
+  content   String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  status    MessageStatus @default(SENT)
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId   String
+  senderType UserType // ADMIN, TEACHER, STUDENT, PARENT
+
+  @@index([conversationId])
+  @@index([senderId, senderType])
+}
+
+model Conversation {
+  id            String               @id @default(cuid())
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  lastMessageAt DateTime             @default(now())
+  messages      Message[]
+  members       ConversationMember[]
+}
+
+model ConversationMember {
+  id             String       @id @default(cuid())
+  memberId       String
+  memberType     UserType
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  lastReadAt     DateTime?
+
+  @@index([conversationId])
+  @@index([memberId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  email     String?  @unique
+  createdAt DateTime @default(now())
+}
+
+model Todo {
+  id          Int       @id @default(autoincrement())
+  content     String
+  description String?
+  startDate   DateTime?
+  dueDate     DateTime?
+  status      String // 'todo', 'inProgress', 'done'
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Post {
+  id        Int        @id @default(autoincrement())
+  title     String
+  content   String     @db.Text
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  authorId  String
+  author    Student    @relation("StudentPosts", fields: [authorId], references: [id])
+  comments  Comment[]
+  reactions Reaction[]
+  type      PostType   @default(JOB)
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+  authorId  String
+  author    Student  @relation("StudentComments", fields: [authorId], references: [id])
+  postId    Int
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Reaction {
+  id        Int          @id @default(autoincrement())
+  type      ReactionType
+  authorId  String
+  author    Student      @relation("StudentReactions", fields: [authorId], references: [id])
+  postId    Int
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([authorId, postId])
+}
+
+model Resource {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  fileData    Bytes // Tutaj będziemy przechowywać sam plik
+  mimeType    String // Typ pliku
+  size        Int
+  section     String
+  uploadedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  downloads   Int      @default(0)
+  addedBy     String
+
+  @@index([section])
+}
+
+enum PostType {
+  JOB
+  ANNOUNCEMENT
+  OTHER
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  HAHA
+  WOW
+  SAD
+  ANGRY
+}
+
+enum UserSex {
+  MALE
+  FEMALE
+}
+
+enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+enum AccessType {
+  READ
+  WRITE
+}
+
+enum UserType {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}

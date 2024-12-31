@@ -1,0 +1,61 @@
+/* message.css - style dla pojedynczej wiadomości */
+.message {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+
+.messageTop {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.messageImg {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.messageContent {
+  max-width: 500px;
+  padding: 10px;
+  border-radius: 20px;
+  background-color: #f0f0f0;
+}
+
+.message.own {
+  align-items: flex-end;
+}
+
+.message.own .messageTop {
+  flex-direction: row-reverse;
+}
+
+.message.own .messageContent {
+  background-color: #0084ff;
+  color: white;
+}
+
+.messageBottom {
+  font-size: 12px;
+  margin-top: 5px;
+  color: gray;
+}
+
+.message.own .messageBottom {
+  color: lightgray;
+}
+
+/* Dodatkowe style dla responsywności */
+@media screen and (max-width: 768px) {
+  .messageContent {
+    max-width: 300px;
+  }
+  
+  .messageImg {
+    width: 24px;
+    height: 24px;
+  }
+}

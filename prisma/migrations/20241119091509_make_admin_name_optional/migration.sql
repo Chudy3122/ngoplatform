@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Admin" ALTER COLUMN "name" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "Student" ALTER COLUMN "name" DROP NOT NULL,
+ALTER COLUMN "bloodType" DROP NOT NULL;
