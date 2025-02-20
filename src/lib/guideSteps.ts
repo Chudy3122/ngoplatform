@@ -73,6 +73,12 @@ export const useGuideSteps = (): GuideStep[] => {
       position: "right"
     },
     {
+      element: ".menu-financing",
+      title: t.guide.steps.financing.title,
+      description: t.guide.steps.financing.description,
+      position: "right"
+    },
+    {
       element: "button[data-guide='language-switcher']",
       title: t.guide.steps.languageSwitcher.title,
       description: t.guide.steps.languageSwitcher.description,

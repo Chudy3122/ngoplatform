@@ -1,4 +1,3 @@
-// /app/[lang]/(dashboard)/layout.tsx
 "use client";
 
 import { useEffect } from 'react';
@@ -14,7 +13,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, params }: DashboardLayoutProps) {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
 
   useEffect(() => {
     const initUser = async () => {
@@ -35,6 +34,10 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
 
     initUser();
   }, [user]);
+
+  if (!isLoaded) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="h-screen flex">

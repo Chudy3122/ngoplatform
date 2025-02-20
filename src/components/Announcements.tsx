@@ -2,13 +2,14 @@ import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
 const Announcements = async () => {
-  const { userId, sessionClaims } = auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const authData = await auth();
+  const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
+  const currentUserId = authData.userId;
 
   const roleConditions = {
-    teacher: { lessons: { some: { teacherId: userId! } } },
-    student: { students: { some: { id: userId! } } },
-    parent: { students: { some: { parentId: userId! } } },
+    teacher: { lessons: { some: { teacherId: currentUserId! } } },
+    student: { students: { some: { id: currentUserId! } } },
+    parent: { students: { some: { parentId: currentUserId! } } },
   };
 
   const data = await prisma.announcement.findMany({

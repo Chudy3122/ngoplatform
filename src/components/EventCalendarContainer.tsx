@@ -1,6 +1,11 @@
 import EventCalendar from "./EventCalendar";
 import EventList from "./EventList";
 
+// Definiujemy interface dla props EventList
+interface EventListProps {
+  dateParam?: string;
+}
+
 const EventCalendarContainer = async ({
   searchParams,
 }: {

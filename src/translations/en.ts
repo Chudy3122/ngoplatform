@@ -28,6 +28,7 @@ export const en = {
       energy: "Energy Prices",
       guide: "Guide",
       shared: "Shared Files",
+      financing: "Financing",
     }
   },
     calculator: {
@@ -95,6 +96,28 @@ export const en = {
         tax: {
           title: "Tax",
           advance: "Tax advance"
+        }
+      }
+    },
+    financing: {
+      title: "Financing",
+      subtitle: "Support NGO platform development",
+      support: {
+        title: "Support Us",
+        description: "If you're satisfied with using our platform, we invite you to support us with any donation.",
+        bankDetails: {
+          title: "Bank transfer details:",
+          name: "ITComplete Krzysztof Siek",
+          account: "Account number: XX XXXX XXXX XXXX XXXX XXXX XXXX",
+          transferTitle: "Title: NGO platform support"
+        }
+      },
+      customPlatform: {
+        title: "Custom Platform for Your Company",
+        description: "Interested in having your own platform? Contact us and we'll prepare an individual pricing tailored to your company's needs.",
+        contact: {
+          phone: "Phone",
+          email: "Email"
         }
       }
     },
@@ -237,6 +260,7 @@ export const en = {
       title: "Events",
       noEvents: "No events",
       createEvent: "Create Event",
+      createdBy: "Created by",
       cancel: "Cancel", // Dodane
       filters: {
         title: "Filters",
@@ -325,6 +349,10 @@ export const en = {
           title: "Energy",
           description: "Information and charts regarding energy prices."
         },
+        financing: {
+          title: "Financing",
+          description: "Financing section - here you can support platform development and learn more about creating your own instance."
+        },
         languageSwitcher: {
           title: "Language Switch",
           description: "Click here to change the platform language. Polish and English versions are available."
@@ -353,6 +381,7 @@ export const en = {
     },
     library: {
       title: "Library",
+      root: "Main Files",
       share: {
         title: "Share with users",
         searchPlaceholder: "Search users...",
@@ -362,7 +391,7 @@ export const en = {
       upload: {
         button: "Upload file",
         title: "Upload new file",
-        uploading: "Uploading...",
+        uploading: "Uploading..."
       },
       folder: {
         create: "New folder",
@@ -376,7 +405,7 @@ export const en = {
       view: {
         grid: "Grid view",
         list: "List view"
-      }
+      },
     },
     
     // Dodajemy sekcje dla wiadomości

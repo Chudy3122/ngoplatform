@@ -16,9 +16,9 @@ const SingleStudentPage = async ({
 }: {
   params: { id: string };
 }) => {
-  const { sessionClaims } = auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
-
+  const authData = await auth();
+  const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
+  
   const student:
     | (Student & {
         class: Class & { _count: { lessons: number } };

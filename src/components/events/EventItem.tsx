@@ -33,7 +33,7 @@ export const EventItem = ({
   authorName,
   canDelete,
   onDelete,
-  participants
+  participants = [] // Dodajemy wartość domyślną
 }: EventItemProps) => {
   const t = useTranslations();
 

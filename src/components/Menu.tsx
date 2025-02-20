@@ -97,6 +97,14 @@ const Menu: React.FC<MenuProps> = () => {
           className: "menu-energy",
           visible: ["admin", "teacher", "student", "parent"],
         },
+        {
+          icon: "/finance.png",
+          label: t.common.menu.financing,
+          href: "/list/financing",
+          // Dodaj klasę menu-financing dla przewodnika
+          className: "menu-financing",
+          visible: ["admin", "teacher", "student", "parent"],
+        },
       ],
     }
   ];

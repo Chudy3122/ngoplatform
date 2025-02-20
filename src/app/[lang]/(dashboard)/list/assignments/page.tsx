@@ -21,11 +21,10 @@ const AssignmentListPage = async ({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
-
-  const { userId, sessionClaims } = auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const authData = await auth();
+  const userId = authData.userId;
+  const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
   const currentUserId = userId;
-  
   
   const columns = [
     {

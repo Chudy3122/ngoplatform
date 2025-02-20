@@ -1,13 +1,21 @@
 import { NextResponse } from 'next/server';
 
+// Dodajemy oznaczenie, że to endpoint dynamiczny
+export const dynamic = 'force-dynamic';
+
+// Dodajemy typ dla danych PSE
+type PSEDataItem = {
+  business_date: string;
+  price?: string;
+  volume?: string;
+};
+
 export async function GET() {
   try {
-    // Pobierz dane z ostatnich 14 dni
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 14);
 
-    // Formatuj daty do formatu YYYY-MM-DD
     const formatDate = (date: Date) => {
       return date.toISOString().split('T')[0];
     };
@@ -18,36 +26,42 @@ export async function GET() {
       headers: {
         'Accept': 'application/json',
       },
-      next: { revalidate: 3600 } // Cache na godzinę
+      next: { revalidate: 3600 }
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch data from PSE');
+      throw new Error(`PSE API responded with status: ${response.status}`);
     }
 
     const rawData = await response.json();
-    console.log('Raw PSE data:', rawData); // Debug log
 
-    // Przekształć dane do naszego formatu
-    const processedData = Array.isArray(rawData.data) 
-      ? rawData.data.map((item: any) => ({
-          time: new Date(item.business_date).toISOString(),
-          price: parseFloat(item.price || 0),
-          volume: parseFloat(item.volume || 0)
-        }))
-      : [];
+    if (!rawData || !rawData.data || !Array.isArray(rawData.data)) {
+      throw new Error('Invalid data format received from PSE');
+    }
+
+    const processedData = rawData.data.map((item: PSEDataItem) => ({
+      time: new Date(item.business_date).toISOString(),
+      price: parseFloat(item.price || '0'),
+      volume: parseFloat(item.volume || '0')
+    }));
 
     return NextResponse.json(processedData);
+
   } catch (error) {
     console.error('Error fetching energy prices:', error);
     
-    // W razie błędu, zwróć dane mockowe żeby UI nie padł
+    // Tworzenie danych mockowych z bardziej realistycznymi wartościami
     const mockData = Array.from({ length: 24 }, (_, i) => ({
       time: new Date(Date.now() - (24 - i) * 3600 * 1000).toISOString(),
-      price: 200 + Math.random() * 300,
-      volume: 50 + Math.random() * 100
+      price: 200 + Math.random() * 100, // Bardziej realistyczny zakres cen
+      volume: 1000 + Math.random() * 500 // Bardziej realistyczny zakres wolumenu
     }));
 
-    return NextResponse.json(mockData);
+    // Zwracamy kod 200, ale z danymi mockowymi i flagą indicating error
+    return NextResponse.json({
+      data: mockData,
+      isError: true,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
   }
 }

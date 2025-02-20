@@ -21,10 +21,9 @@ const ExamListPage = async ({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
-
-const { userId, sessionClaims } = auth();
-const role = (sessionClaims?.metadata as { role?: string })?.role;
-const currentUserId = userId;
+  const authData = await auth();
+  const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
+  const currentUserId = authData.userId;
 
 
 const columns = [

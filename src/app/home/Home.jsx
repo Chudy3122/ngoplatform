@@ -1,18 +1,24 @@
-import Topbar from "../../components/topbar/Topbar";
-import Sidebar from "../../components/sidebar/Sidebar";
-import Feed from "../../components/feed/Feed";
-import Rightbar from "../../components/rightbar/Rightbar";
-import "./home.css"
+// app/[lang]/home/page.tsx
+"use client";
 
-export default function Home() {
+import dynamic from 'next/dynamic';
+import Topbar from "@/components/topbar/page";
+import Sidebar from "@/components/Sidebar";
+import "./Home.css";
+
+// Renderujemy komponent tylko po stronie klienta
+const Home = () => {
   return (
     <>
       <Topbar />
       <div className="homeContainer">
         <Sidebar />
-        <Feed/>
-        <Rightbar/>
       </div>
     </>
   );
-}
+};
+
+// Eksportujemy komponent z wyłączonym SSR
+export default dynamic(() => Promise.resolve(Home), {
+  ssr: false
+});

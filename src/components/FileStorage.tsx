@@ -567,12 +567,12 @@ useEffect(() => {
         ...ownFilesSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })),
+        } as FileData)), // Dodaj rzutowanie typu
         ...sharedFilesSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           isShared: true
-        }))
+        } as FileData)) // Dodaj rzutowanie typu
       ];
   
       setFiles(filesList);
@@ -701,13 +701,13 @@ return (
 
     {/* Breadcrumbs */}
     {currentFolder && (
-        <div className="mb-4 flex items-center gap-2 text-sm">
-          <button
-            className="text-blue-500 hover:underline"
-            onClick={() => setCurrentFolder('')}
-          >
-            {t.library.navigation.root}
-          </button>
+      <div className="mb-4 flex items-center gap-2 text-sm">
+        <button
+          className="text-blue-500 hover:underline"
+          onClick={() => setCurrentFolder('')}
+        >
+          {t.library.root || 'Root'} {/* Zmień na istniejący klucz lub dodaj fallback */}
+        </button>
         {currentFolder.split('/').map((part, index, arr) => (
           <div key={index} className="flex items-center gap-2">
             <span className="text-gray-400">/</span>

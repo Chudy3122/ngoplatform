@@ -28,6 +28,7 @@ export const pl = {
       energy: "Ceny Energii",
       guide: "Przewodnik",
       shared: "Udostępnione pliki",
+      financing: "Finansowanie",
     }
   },
     calculator: {
@@ -95,6 +96,28 @@ export const pl = {
         tax: {
           title: "Podatek",
           advance: "Zaliczka na podatek"
+        }
+      }
+    },
+    financing: {
+      title: "Finansowanie",
+      subtitle: "Wspieraj rozwój platformy NGO",
+      support: {
+        title: "Wesprzyj nas",
+        description: "Jeśli jesteś zadowolony z korzystania z naszej platformy, zapraszamy do wsparcia nas poprzez dowolną wpłatę.",
+        bankDetails: {
+          title: "Dane do przelewu:",
+          name: "ITComplete Krzysztof Siek",
+          account: "Nr konta: XX XXXX XXXX XXXX XXXX XXXX XXXX",
+          transferTitle: "Tytuł: Wsparcie platformy NGO"
+        }
+      },
+      customPlatform: {
+        title: "Własna platforma dla Twojej firmy",
+        description: "Interesuje Cię posiadanie własnej platformy? Skontaktuj się z nami, a przygotujemy indywidualną wycenę dostosowaną do potrzeb Twojej firmy.",
+        contact: {
+          phone: "Telefon",
+          email: "Email"
         }
       }
     },
@@ -237,6 +260,7 @@ export const pl = {
       title: "Wydarzenia",
       noEvents: "Brak wydarzeń",
       createEvent: "Utwórz wydarzenie",
+      createdBy: "Utworzone przez",
       cancel: "Anuluj", // Dodane
       filters: {
         title: "Filtry",
@@ -325,6 +349,10 @@ export const pl = {
           title: "Energia",
           description: "Informacje i wykresy dotyczące cen energii."
         },
+        financing: {
+          title: "Finansowanie",
+          description: "Sekcja finansowania - tutaj możesz wesprzeć rozwój platformy oraz dowiedzieć się więcej o możliwości stworzenia własnej instancji."
+        },
         languageSwitcher: {
           title: "Zmiana Języka",
           description: "Kliknij tutaj, aby zmienić język platformy. Dostępne są wersje w języku polskim i angielskim."
@@ -353,6 +381,7 @@ export const pl = {
     },
     library: {
       title: "Biblioteka",
+      root: "Folder główny",
       share: {
         title: "Udostępnij użytkownikom",
         searchPlaceholder: "Szukaj użytkowników...",
@@ -362,7 +391,7 @@ export const pl = {
       upload: {
         button: "Wgraj plik",
         title: "Wgraj nowy plik",
-        uploading: "Wgrywanie...",
+        uploading: "Wgrywanie..."
       },
       folder: {
         create: "Nowy folder",
@@ -376,7 +405,7 @@ export const pl = {
       view: {
         grid: "Widok siatki",
         list: "Widok listy"
-      }
+      },
     },
     
     // Dodajemy sekcje dla wiadomości

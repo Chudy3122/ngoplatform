@@ -1,6 +1,5 @@
-// app/api/clerkUser/[userId]/route.js
-import { NextResponse } from "next/server";
-import { clerkClient } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/clerk-sdk-node";
 
 export async function GET(request, { params }) {
   try {
@@ -13,13 +12,16 @@ export async function GET(request, { params }) {
       );
     }
 
-    const user = await clerkClient.users.getUser(userId);
+    const { userId: currentUserId } = auth();
+
+    // Jeśli chcesz pobrać konkretnego użytkownika
+    const specificUser = await clerkClient.users.getUser(userId);
 
     return NextResponse.json({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      imageUrl: user.imageUrl,
-      email: user.emailAddresses[0]?.emailAddress
+      firstName: specificUser.firstName,
+      lastName: specificUser.lastName,
+      imageUrl: specificUser.imageUrl,
+      email: specificUser.emailAddresses[0]?.emailAddress
     });
 
   } catch (error) {

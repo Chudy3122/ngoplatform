@@ -15,12 +15,12 @@ interface Platform {
   buttonColor: string;
 }
 
-// Dodajmy typ dla tłumaczeń platform
+// Zaktualizowany interfejs z readonly arrays
 interface PlatformTranslations {
-  [key: string]: {  // index signature
+  [key: string]: {
     name: string;
     description: string;
-    features: string[];
+    features: readonly string[];  // Dodane readonly
     bestFor: string;
   }
 }

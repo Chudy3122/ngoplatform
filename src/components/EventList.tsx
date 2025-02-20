@@ -113,6 +113,7 @@ interface EventListProps {
 interface EventListProps {
   limit?: number;
   compact?: boolean;
+  dateParam?: string;
 }
 
 export default function EventList({ limit, compact = false }: EventListProps) {
