@@ -4,7 +4,7 @@
 import dynamic from 'next/dynamic';
 import Topbar from "@/components/topbar/page";
 import Sidebar from "@/components/Sidebar";
-import "./Home.css";
+import "./home.css";
 
 // Renderujemy komponent tylko po stronie klienta
 const Home = () => {
