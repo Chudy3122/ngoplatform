@@ -17,7 +17,7 @@ export default function FinancingModule() {
           <p className="text-gray-600 mt-2">{t.financing.subtitle}</p>
         </div>
         <Image 
-          src="/itcomplete-logo.png" 
+          src="/itcomplete-logo.jpg" 
           alt="ITComplete Logo" 
           width={150} 
           height={150}
@@ -73,7 +73,7 @@ export default function FinancingModule() {
 
       {/* Company Info */}
       <div className="text-center text-gray-500 text-sm pt-8 pb-4">
-        <p>© 2024 ITComplete - Krzysztof Siek</p>
+        <p>© 2024 ITComplete - Marcin Rokoszewski</p>
         <p>Wszystkie prawa zastrzeżone</p>
       </div>
     </div>

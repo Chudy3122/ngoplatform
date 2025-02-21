@@ -107,7 +107,7 @@ export const pl = {
         description: "Jeśli jesteś zadowolony z korzystania z naszej platformy, zapraszamy do wsparcia nas poprzez dowolną wpłatę.",
         bankDetails: {
           title: "Dane do przelewu:",
-          name: "ITComplete Krzysztof Siek",
+          name: "ITComplete Marcin Rokoszewski",
           account: "Nr konta: XX XXXX XXXX XXXX XXXX XXXX XXXX",
           transferTitle: "Tytuł: Wsparcie platformy NGO"
         }
@@ -124,9 +124,17 @@ export const pl = {
     news: {
       categories: {
         country: "Z kraju",
+        business: "Biznes",
         technology: "Technologia",
         science: "Nauka",
-        energy: "Energia"
+        health: "Zdrowie",
+        sport: "Sport",
+        culture: "Kultura",
+        environment: "Środowisko",
+        education: "Edukacja",
+        innovation: "Innowacje",
+        energy: "Energia",
+        local: "Lokalne"
       },
       readMore: "Czytaj więcej",
       loading: "Ładowanie newsów...",
@@ -268,6 +276,20 @@ export const pl = {
         goingTo: "Wydarzenia w których uczestniczę",
         interested: "Wydarzenia którymi jestem zainteresowany",
         myEvents: "Moje wydarzenia"
+      },
+      form: {
+        title: "Tytuł",
+        location: "Lokalizacja",
+        startTime: "Data rozpoczęcia",
+        endTime: "Data zakończenia",
+        price: "Cena (PLN)",
+        pricePlaceholder: "Zostaw puste jeśli darmowe",
+        maxParticipants: "Maksymalna liczba uczestników",
+        maxParticipantsPlaceholder: "Zostaw puste jeśli bez limitu",
+        description: "Opis",
+        isPublic: "Wydarzenie publiczne (widoczne dla wszystkich)",
+        create: "Utwórz wydarzenie",
+        creating: "Tworzenie...",
       },
       stats: {
         title: "Statystyki",

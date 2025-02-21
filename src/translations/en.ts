@@ -107,7 +107,7 @@ export const en = {
         description: "If you're satisfied with using our platform, we invite you to support us with any donation.",
         bankDetails: {
           title: "Bank transfer details:",
-          name: "ITComplete Krzysztof Siek",
+          name: "ITComplete Marcin Rokoszewski",
           account: "Account number: XX XXXX XXXX XXXX XXXX XXXX XXXX",
           transferTitle: "Title: NGO platform support"
         }
@@ -123,10 +123,18 @@ export const en = {
     },
     news: {
       categories: {
-        country: "Country",
+        country: "National",
+        business: "Business",
         technology: "Technology",
         science: "Science",
-        energy: "Energy"
+        health: "Health",
+        sport: "Sport",
+        culture: "Culture",
+        environment: "Environment",
+        education: "Education",
+        innovation: "Innovation",
+        energy: "Energy",
+        local: "Local"
       },
       readMore: "Read more",
       loading: "Loading news...",
@@ -268,6 +276,20 @@ export const en = {
         goingTo: "Events I'm going to",
         interested: "Events I'm interested in",
         myEvents: "My events"
+      },
+      form: {
+        title: "Title",
+        location: "Location",
+        startTime: "Start Time",
+        endTime: "End Time",
+        price: "Price (PLN)",
+        pricePlaceholder: "Leave empty if free",
+        maxParticipants: "Max Participants",
+        maxParticipantsPlaceholder: "Leave empty for unlimited",
+        description: "Description",
+        isPublic: "Public event (visible to everyone)",
+        create: "Create Event",
+        creating: "Creating...",
       },
       stats: {
         title: "Statistics",

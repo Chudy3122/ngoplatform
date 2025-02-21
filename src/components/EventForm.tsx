@@ -1,4 +1,3 @@
-// app/[lang]/(dashboard)/list/events/EventForm.tsx
 "use client";
 
 import { useState } from 'react';
@@ -48,7 +47,7 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
   
       if (!response.ok) {
         console.error('Response error:', data);
-        throw new Error(data.error || 'Failed to create event');
+        throw new Error(data.error || t.events.delete.error);
       }
   
       // Reset form
@@ -64,7 +63,7 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
       onEventCreated?.();
     } catch (error) {
       console.error('Error creating event:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create event');
+      setError(error instanceof Error ? error.message : t.events.delete.error);
     } finally {
       setIsSubmitting(false);
     }
@@ -80,7 +79,9 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t.events.form.title}
+          </label>
           <input
             type="text"
             value={title}
@@ -92,7 +93,9 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t.events.form.location}
+          </label>
           <input
             type="text"
             value={location}
@@ -104,7 +107,9 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t.events.form.startTime}
+          </label>
           <input
             type="datetime-local"
             value={startTime}
@@ -116,7 +121,9 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t.events.form.endTime}
+          </label>
           <input
             type="datetime-local"
             value={endTime}
@@ -129,13 +136,15 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Price (PLN)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t.events.form.price}
+          </label>
           <input
             type="number"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-            placeholder="Leave empty if free"
+            placeholder={t.events.form.pricePlaceholder}
             min="0"
             step="0.01"
             disabled={isSubmitting}
@@ -143,13 +152,15 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Max Participants</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t.events.form.maxParticipants}
+          </label>
           <input
             type="number"
             value={maxParticipants}
             onChange={(e) => setMaxParticipants(e.target.value)}
             className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-            placeholder="Leave empty for unlimited"
+            placeholder={t.events.form.maxParticipantsPlaceholder}
             min="1"
             disabled={isSubmitting}
           />
@@ -157,7 +168,9 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {t.events.form.description}
+        </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -177,7 +190,7 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
           disabled={isSubmitting}
         />
         <label htmlFor="isPublic" className="text-sm font-medium text-gray-700">
-          Public event (visible to everyone)
+          {t.events.form.isPublic}
         </label>
       </div>
 
@@ -186,7 +199,7 @@ export default function EventForm({ onEventCreated }: EventFormProps) {
         className="w-full bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-blue-500 transition-colors"
         disabled={isSubmitting}
       >
-        {isSubmitting ? 'Creating...' : 'Create Event'}
+        {isSubmitting ? t.events.form.creating : t.events.form.create}
       </button>
     </form>
   );
