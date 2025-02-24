@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "postinstall": "prisma generate",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
@@ -63,7 +64,7 @@
   "devDependencies": {
     "@shadcn/ui": "^0.0.4",
     "@types/bcrypt": "^5.0.2",
-    "@types/node": "^20.17.9",
+    "@types/node": "^20.17.19",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
@@ -72,7 +73,7 @@
     "prisma": "^5.21.1",
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.3"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
