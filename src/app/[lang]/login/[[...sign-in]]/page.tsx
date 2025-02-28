@@ -1,3 +1,4 @@
+// /src/app/[lang]/login/[[...sign-in]]/page.tsx
 "use client";
 
 import { SignIn } from "@clerk/nextjs";
@@ -12,8 +13,10 @@ export default function LoginPage() {
   return (
     <div className="h-screen flex items-center justify-center bg-lamaSkyLight">
       <SignIn 
+        path={`/${lang}/login`}  // Dodany wymagany parametr path
+        routing="path"
         afterSignInUrl={`/${lang}/admin`}
-        signUpUrl={`/${lang}/sign-up`}  // Upewnij się, że ta ścieżka jest poprawna
+        signUpUrl={`/${lang}/sign-up`}
         appearance={{
           elements: {
             rootBox: "bg-white p-8 rounded-lg shadow-xl",
