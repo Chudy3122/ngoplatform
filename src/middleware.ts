@@ -1,13 +1,20 @@
+// src/middleware.ts
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const locales = ["pl", "en"];
 const defaultLocale = "pl";
+const publicPaths = ['/login', '/sign-up']; // Ścieżki dostępne bez logowania
 
 function getLocale(pathname: string): string {
   const locale = pathname.split('/')[1];
   return locales.includes(locale) ? locale : defaultLocale;
+}
+
+// Funkcja pomocnicza do sprawdzania czy ścieżka jest publiczna
+function isPublicPath(path: string): boolean {
+  return publicPaths.some(publicPath => path.includes(publicPath));
 }
 
 export default clerkMiddleware(async (auth, request: NextRequest) => {
@@ -27,14 +34,14 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
   // Pobierz sesję
   const session = await auth();
 
-  // Jeśli użytkownik jest zalogowany i próbuje dostać się do strony logowania
-  if (session?.userId && pathname.includes('/login')) {
+  // Jeśli użytkownik jest zalogowany i próbuje dostać się do strony logowania lub rejestracji
+  if (session?.userId && isPublicPath(pathname)) {
     const userRole = (session.sessionClaims?.metadata as { role?: string })?.role || 'student';
     return NextResponse.redirect(new URL(`/${locale}/${userRole}`, request.url));
   }
 
   // Jeśli użytkownik nie jest zalogowany i próbuje dostać się do chronionej strony
-  if (!session?.userId && !pathname.includes('/login')) {
+  if (!session?.userId && !isPublicPath(pathname)) {
     return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
   }
 
