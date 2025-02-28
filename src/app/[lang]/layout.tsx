@@ -1,7 +1,9 @@
+// /src/app/[lang]/layout.tsx
 "use client";
 
 import { useEffect } from 'react';
 import { useUser } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Menu from "@/components/Menu";
@@ -14,6 +16,8 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, params }: DashboardLayoutProps) {
   const { user, isLoaded } = useUser();
+  const pathname = usePathname();
+  const isLoginPage = pathname?.includes('/login');
 
   useEffect(() => {
     const initUser = async () => {
@@ -39,6 +43,12 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
     return <div>Loading...</div>;
   }
 
+  // Dla strony logowania, wyświetl tylko dzieci bez menu
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
+  // Dla pozostałych stron, wyświetl pełny layout z menu
   return (
     <div className="h-screen flex">
       {/* LEFT */}
