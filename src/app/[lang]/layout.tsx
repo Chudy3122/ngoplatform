@@ -17,7 +17,9 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, params }: DashboardLayoutProps) {
   const { user, isLoaded } = useUser();
   const pathname = usePathname();
-  const isLoginPage = pathname?.includes('/login');
+  
+  // Sprawdzamy czy to strona logowania lub rejestracji
+  const isAuthPage = pathname?.includes('/login') || pathname?.includes('/sign-up');
 
   useEffect(() => {
     const initUser = async () => {
@@ -43,8 +45,8 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
     return <div>Loading...</div>;
   }
 
-  // Dla strony logowania, wyświetl tylko dzieci bez menu
-  if (isLoginPage) {
+  // Dla stron logowania i rejestracji, wyświetl tylko dzieci bez menu
+  if (isAuthPage) {
     return <>{children}</>;
   }
 
