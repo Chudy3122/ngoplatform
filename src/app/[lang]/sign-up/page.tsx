@@ -1,19 +1,18 @@
 "use client";
 
-import { SignIn } from "@clerk/nextjs";
+import { SignUp } from "@clerk/nextjs";
 import { useParams } from "next/navigation";
-import { useTranslations } from "@/hooks/useTranslations";
 
-export default function LoginPage() {
+export default function SignUpPage() {
  const params = useParams();
  const lang = params?.lang as string;
- const t = useTranslations();
 
  return (
    <div className="h-screen flex items-center justify-center bg-lamaSkyLight">
-     <SignIn 
-       afterSignInUrl={`/${lang}/admin`}
-       signUpUrl={`/${lang}/sign-up`}
+     <SignUp 
+       path="/sign-up"
+       routing="path"
+       afterSignUpUrl={`/${lang}/admin`}
        appearance={{
          elements: {
            rootBox: "bg-white p-8 rounded-lg shadow-xl",
@@ -23,10 +22,10 @@ export default function LoginPage() {
              margin: "0"
            },
            headerTitle: {
-             text: t.auth.signIn
+             text: "Create Account"
            },
            headerSubtitle: {
-             text: t.auth.signInSubtitle
+             text: "Sign up for NGO Platform"
            },
            formButtonPrimary: 
              "bg-blue-500 hover:bg-blue-600 text-sm normal-case",

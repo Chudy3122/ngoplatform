@@ -73,7 +73,7 @@ export default function FinancingModule() {
 
       {/* Company Info */}
       <div className="text-center text-gray-500 text-sm pt-8 pb-4">
-        <p>© 2024 ITComplete - Marcin Rokoszewski</p>
+        <p>© 2025 ITComplete - Marcin Rokoszewski</p>
         <p>Wszystkie prawa zastrzeżone</p>
       </div>
     </div>
