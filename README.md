@@ -20,16 +20,16 @@ It is a complex application for handling non-governmental companies.
 
 The application has 12 modules in it:
 
-Home page
-Announcements
-Events
-News
-List of Tasks
-Library
-Resources
-Shared files
-Video Communication
-Salary Calculator
-Energy prices
-Financing
+Home page,
+Announcements,
+Events,
+News,
+List of Tasks,
+Library,
+Resources,
+Shared files,
+Video Communication,
+Salary Calculator,
+Energy prices,
+Financing.
 
