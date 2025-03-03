@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useRef } from "react";
-import { initializeSocket } from "../lib/socket";
+import { initializeSocket } from "../lib/socketClient";
 import { useUser } from "@clerk/nextjs";
 
 const SocketContext = createContext();
