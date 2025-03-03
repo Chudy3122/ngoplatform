@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 
 export async function POST() {
@@ -10,6 +10,32 @@ export async function POST() {
     }
 
     const userId = session.userId;
+    
+    // Przypisanie roli "student" w Clerk, jeśli jeszcze nie ma przypisanej roli
+    try {
+      const clerk = await clerkClient();
+      const user = await clerk.users.getUser(userId);
+      
+      // Sprawdź czy użytkownik ma już przypisaną rolę
+      const userRole = user.publicMetadata?.role;
+
+      if (!userRole) {
+        console.log(`Assigning 'student' role to user ${userId}`);
+        
+        // Przypisz rolę "student" jeśli jej nie ma
+        await clerk.users.updateUser(userId, {
+          publicMetadata: {
+            ...user.publicMetadata, // Zachowaj istniejące metadane
+            role: 'student'
+          }
+        });
+        
+        console.log('Role assigned successfully');
+      }
+    } catch (clerkError) {
+      console.error('Error updating Clerk metadata:', clerkError);
+      // Kontynuuj nawet jeśli aktualizacja metadanych nie powiodła się
+    }
     
     // Sprawdź czy użytkownik już istnieje
     const [existingAdmin, existingTeacher, existingStudent, existingParent] = await Promise.all([
