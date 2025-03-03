@@ -6,31 +6,26 @@ const prisma = new PrismaClient();
 const users = new Map();
 
 export default function SocketHandler(req, res) {
-  // Sprawdzamy, czy Socket.IO jest już zainicjowane
+  // Sprawdź, czy Socket.IO jest już zainicjowane
   if (res.socket.server.io) {
     console.log('Socket.IO już zainicjowane');
     res.end();
     return;
   }
 
+  // Utwórz nowy serwer Socket.IO
   const io = new Server(res.socket.server, {
     path: '/api/socket',
     addTrailingSlash: false,
     cors: {
       origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
       methods: ["GET", "POST"],
-      allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true
     },
-    transports: ['polling', 'websocket'],
-    allowEIO3: true,
-    connectTimeout: 45000,
+    transports: ['websocket', 'polling']
   });
 
-  io.on("connect_error", (err) => {
-    console.log(`connect_error due to ${err.message}`);
-  });
-
+  // Obsługa wydarzeń
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
 
@@ -106,7 +101,7 @@ export default function SocketHandler(req, res) {
 
       if (disconnectedUserId) {
         try {
-          // Spróbuj zaktualizować status we wszystkich tabelach
+          // Aktualizacja statusu we wszystkich tabelach
           await Promise.all([
             prisma.admin.updateMany({
               where: { id: disconnectedUserId },
@@ -140,7 +135,7 @@ export default function SocketHandler(req, res) {
     });
   });
 
-  // Zapisanie instancji Socket.IO w obiekcie serwera
+  // Zapisz instancję Socket.IO w obiekcie serwera
   res.socket.server.io = io;
   
   console.log('Inicjalizacja Socket.IO zakończona');

@@ -1,17 +1,20 @@
-// lib/socket.js
+// src/utils/socket.js (lub gdziekolwiek masz swój kod Socket.IO klienta)
 import { io } from "socket.io-client";
 
 let socket;
 
-export const initializeSocket = async () => {
-  // Najpierw zainicjalizuj endpoint API
-  await fetch('/api/socket');
-  
-  // Teraz możemy podłączyć się do Socket.IO
+export const getSocket = () => {
   if (!socket) {
+    // Najpierw spróbuj zainicjalizować endpoint Socket.IO (tylko raz)
+    fetch('/api/socket')
+      .catch(err => console.error('Failed to initialize socket endpoint:', err));
+    
+    // Utwórz instancję Socket.IO
     socket = io({
       path: '/api/socket',
-      transports: ["websocket", "polling"], // Próbujemy najpierw WebSocket, ale umożliwiamy fallback na polling
+      autoConnect: true,
+      reconnectionAttempts: 5,
+      transports: ['websocket', 'polling']
     });
 
     socket.on("connect_error", (error) => {
@@ -29,21 +32,10 @@ export const initializeSocket = async () => {
   return socket;
 };
 
-export const getSocket = async () => {
-  if (!socket) {
-    return await initializeSocket();
-  }
-  return socket;
-};
-
-export const connectToSocket = async (userId, userType) => {
-  const socketInstance = await getSocket();
+export const connectToSocket = (userId, userType) => {
+  const socketInstance = getSocket();
   
   if (userId && socketInstance) {
-    if (!socketInstance.connected) {
-      socketInstance.connect();
-    }
-    
     socketInstance.emit("addUser", { userId, userType });
     console.log("Emitting addUser for:", userId, userType);
   }
