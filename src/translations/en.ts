@@ -430,6 +430,27 @@ export const en = {
       },
     },
     
+    sharedResources: {
+      title: "Shared Resources",
+      sharedByMe: "Shared by me",
+      sharedWithMe: "Shared with me",
+      noFilesSharedByMe: "You haven't shared any files yet",
+      noFilesSharedWithMe: "No files have been shared with you",
+      shareNewFile: "Share New File",
+      sharedBy: "Shared by",
+      unknownUser: "Unknown user",
+      download: "Download",
+      errorLoading: "Failed to load shared files",
+      revokeSuccess: "Access revoked successfully",
+      revokeError: "Failed to revoke access",
+      deleteConfirm: "Are you sure you want to delete this file? This action cannot be undone.",
+      deleteSuccess: "File deleted successfully",
+      deleteError: "Failed to delete file",
+      downloadSuccess: "File downloaded successfully",
+      downloadError: "Failed to download file",
+      initError: "Failed to initialize user data"
+    },
+    
     sharedFiles: {
       title: "Share file",
       description: "Select users to share this file with.",

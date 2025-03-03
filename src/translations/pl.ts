@@ -430,7 +430,28 @@ export const pl = {
       },
     },
     
-    // Dla pliku pl.ts - dodaj tę sekcję
+        // Dodaj te klucze do pliku pl.ts
+    sharedResources: {
+      title: "Udostępnione pliki",
+      sharedByMe: "Udostępnione przeze mnie",
+      sharedWithMe: "Udostępnione dla mnie",
+      noFilesSharedByMe: "Nie udostępniłeś jeszcze żadnych plików",
+      noFilesSharedWithMe: "Nie masz jeszcze żadnych udostępnionych plików",
+      shareNewFile: "Udostępnij nowy plik",
+      sharedBy: "Udostępnione przez",
+      unknownUser: "Nieznany użytkownik",
+      download: "Pobierz",
+      errorLoading: "Nie udało się załadować udostępnionych plików",
+      revokeSuccess: "Dostęp został cofnięty",
+      revokeError: "Nie udało się cofnąć dostępu",
+      deleteConfirm: "Czy na pewno chcesz usunąć ten plik? Tej operacji nie można cofnąć.",
+      deleteSuccess: "Plik został usunięty",
+      deleteError: "Nie udało się usunąć pliku",
+      downloadSuccess: "Plik został pobrany",
+      downloadError: "Nie udało się pobrać pliku",
+      initError: "Nie udało się zainicjalizować danych użytkownika"
+    },
+
     sharedFiles: {
       title: "Udostępnij plik",
       description: "Wybierz użytkowników, którym chcesz udostępnić ten plik.",

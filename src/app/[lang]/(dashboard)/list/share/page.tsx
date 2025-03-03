@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { ShareFileModal } from '@/components/ShareFileModal';
 import { toast } from 'react-toastify';
 import { FileCard } from '@/components/FileCard';
+import { useTranslations } from '@/hooks/useTranslations';
 
 interface SharedFile {
   id: string;
@@ -48,6 +49,7 @@ interface FileShare {
 }
 
 const SharedResourcesPage = () => {
+  const t = useTranslations();
   const [sharedByMe, setSharedByMe] = useState<SharedFile[]>([]);
   const [sharedWithMe, setSharedWithMe] = useState<SharedFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,11 +77,11 @@ const SharedResourcesPage = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching shared files:', err);
-      setError('Failed to load shared files');
+      setError(t?.sharedResources?.errorLoading || 'Failed to load shared files');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const handleModalClose = useCallback(async () => {
     setSelectedFile(null);
@@ -96,16 +98,16 @@ const SharedResourcesPage = () => {
         throw new Error('Failed to revoke access');
       }
 
-      toast.success('Access revoked successfully');
+      toast.success(t?.sharedResources?.revokeSuccess || 'Access revoked successfully');
       await fetchSharedFiles();
     } catch (err) {
       console.error('Error revoking access:', err);
-      toast.error('Failed to revoke access');
+      toast.error(t?.sharedResources?.revokeError || 'Failed to revoke access');
     }
-  }, [fetchSharedFiles]);
+  }, [fetchSharedFiles, t]);
 
   const handleDeleteFile = useCallback(async (fileId: string) => {
-    if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
+    if (!confirm(t?.sharedResources?.deleteConfirm || 'Are you sure you want to delete this file? This action cannot be undone.')) {
       return;
     }
   
@@ -118,13 +120,13 @@ const SharedResourcesPage = () => {
         throw new Error('Failed to delete file');
       }
   
-      toast.success('File deleted successfully');
+      toast.success(t?.sharedResources?.deleteSuccess || 'File deleted successfully');
       await fetchSharedFiles();
     } catch (err) {
       console.error('Error deleting file:', err);
-      toast.error('Failed to delete file');
+      toast.error(t?.sharedResources?.deleteError || 'Failed to delete file');
     }
-  }, [fetchSharedFiles]);
+  }, [fetchSharedFiles, t]);
 
   const handleDownload = useCallback(async (fileId: string, fileName: string) => {
     try {
@@ -140,12 +142,12 @@ const SharedResourcesPage = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success('File downloaded successfully');
+      toast.success(t?.sharedResources?.downloadSuccess || 'File downloaded successfully');
     } catch (err) {
       console.error('Error downloading file:', err);
-      toast.error('Failed to download file');
+      toast.error(t?.sharedResources?.downloadError || 'Failed to download file');
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const initializeUser = async () => {
@@ -162,13 +164,13 @@ const SharedResourcesPage = () => {
           await fetchSharedFiles();
         } catch (error) {
           console.error('Error during initialization:', error);
-          setError('Failed to initialize user data');
+          setError(t?.sharedResources?.initError || 'Failed to initialize user data');
         }
       }
     };
 
     initializeUser();
-  }, [user, fetchSharedFiles]);
+  }, [user, fetchSharedFiles, t]);
 
   if (loading) {
     return (
@@ -181,13 +183,13 @@ const SharedResourcesPage = () => {
   return (
     <div className="p-6 menu-sharedfiles">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold">Shared Resources</h1>
+        <h1 className="text-2xl font-semibold">{t?.sharedResources?.title || "Shared Resources"}</h1>
         <button
           onClick={() => setSelectedFile({ id: '', name: 'New Share' })}
           className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 menu-sharedfiles-upload"
         >
           <Upload className="w-5 h-5" />
-          Share New File
+          {t?.sharedResources?.shareNewFile || "Share New File"}
         </button>
       </div>
 
@@ -202,12 +204,12 @@ const SharedResourcesPage = () => {
         <div className="menu-sharedfiles-by-me">
           <h2 className="text-xl font-medium mb-4 flex items-center gap-2">
             <Share2 className="w-5 h-5" />
-            Shared by me
+            {t?.sharedResources?.sharedByMe || "Shared by me"}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {sharedByMe.length === 0 ? (
               <div className="col-span-full p-8 text-center text-gray-500 bg-white rounded-lg shadow-sm">
-                You haven&apos;t shared any files yet
+                {t?.sharedResources?.noFilesSharedByMe || "You haven't shared any files yet"}
               </div>
             ) : (
               sharedByMe.map((file) => (
@@ -227,12 +229,12 @@ const SharedResourcesPage = () => {
         <div className="menu-sharedfiles-with-me">
           <h2 className="text-xl font-medium mb-4 flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Shared with me
+            {t?.sharedResources?.sharedWithMe || "Shared with me"}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {sharedWithMe.length === 0 ? (
               <div className="col-span-full p-8 text-center text-gray-500 bg-white rounded-lg shadow-sm">
-                No files have been shared with you
+                {t?.sharedResources?.noFilesSharedWithMe || "No files have been shared with you"}
               </div>
             ) : (
               sharedWithMe.map((file) => (
@@ -244,11 +246,11 @@ const SharedResourcesPage = () => {
                           {file.name}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          Shared by {
+                          {t?.sharedResources?.sharedBy || "Shared by"} {
                             file.shares[0]?.sharedByAdminId || 
                             file.shares[0]?.sharedByTeacherId || 
                             file.shares[0]?.sharedByStudentId || 
-                            file.shares[0]?.sharedByParentId || 'Unknown user'
+                            file.shares[0]?.sharedByParentId || (t?.sharedResources?.unknownUser || 'Unknown user')
                           }
                         </p>
                       </div>
@@ -256,6 +258,7 @@ const SharedResourcesPage = () => {
                     <button
                       onClick={() => handleDownload(file.id, file.name)}
                       className="inline-flex items-center p-2 text-gray-500 hover:text-gray-700"
+                      title={t?.sharedResources?.download || "Download"}
                     >
                       <Download className="w-5 h-5" />
                     </button>
