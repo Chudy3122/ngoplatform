@@ -1,4 +1,4 @@
-# Lama Dev School Management Dashboard
+# NgoPlatform
 
 ## Getting Started
 
@@ -16,11 +16,20 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+It is a complex application for handling non-governmental companies.
 
-## Learn More
+The application has 12 modules in it:
 
-To learn more about Next.js, take a look at the following resources:
+Home page,
+Announcements,
+Events,
+News,
+List of Tasks,
+Library,
+Resources,
+Shared files,
+Video Communication,
+Salary Calculator,
+Energy prices,
+Financing.
 
-- [Lama Dev Youtube Channel](https://youtube.com/lamadev) 
-- [Next.js](https://nextjs.org/learn)
