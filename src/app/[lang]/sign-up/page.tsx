@@ -15,7 +15,7 @@ export default function SignUpPage() {
       <SignUp 
         path={`/${lang}/sign-up`}
         routing="path"
-        afterSignUpUrl={`/${lang}/dashboard`} // Zmiana z admin na dashboard
+        afterSignUpUrl={`/${lang}/dashboard`} // Przekierowanie na dashboard
         signInUrl={`/${lang}/login`}
         appearance={{
           elements: {

@@ -40,14 +40,6 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
     return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
-  // Sprawdź czy użytkownik ma rolę
-  const userRole = (session?.sessionClaims?.metadata as { role?: string })?.role;
-  
-  // Jeśli użytkownik nie ma roli, przekieruj na onboarding
-  if (session?.userId && !userRole && !pathname.includes('/onboarding')) {
-    return NextResponse.redirect(new URL(`/${locale}/onboarding`, request.url));
-  }
-
   // Jeśli użytkownik jest na głównej stronie, przekieruj na dashboard
   if (session?.userId && (pathname === `/${locale}` || pathname === `/${locale}/`)) {
     return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
@@ -56,6 +48,14 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
   // Jeśli użytkownik nie jest zalogowany i próbuje dostać się do chronionej strony
   if (!session?.userId && !isPublicPath(pathname)) {
     return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
+  }
+
+  // Jeśli użytkownik próbuje dostać się do ścieżki specyficznej dla roli (np. /admin, /student)
+  const roleSpecificPaths = ['admin', 'teacher', 'student', 'parent'];
+  const pathSegments = pathname.split('/');
+  if (session?.userId && pathSegments.length > 2 && roleSpecificPaths.includes(pathSegments[2])) {
+    // Przekieruj na dashboard
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
   return NextResponse.next();

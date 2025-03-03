@@ -1,6 +1,7 @@
 import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
+import { clerkClient } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 
 export async function POST(req: Request) {
@@ -47,6 +48,24 @@ export async function POST(req: Request) {
       const { id, email_addresses, username, first_name, last_name } = evt.data;
       
       try {
+        // Przypisanie roli "student" nowemu użytkownikowi
+        console.log('Assigning student role to user:', id);
+        
+        // Wykorzystanie API Clerk bezpośrednio bez clerkClient
+        // Można też użyć fetch do API Clerk zamiast tego
+        try {
+          const clerk = await clerkClient();
+          await clerk.users.updateUser(id, {
+            publicMetadata: {
+              role: 'student'
+            }
+          });
+          console.log('Role assigned successfully');
+        } catch (clerkError) {
+          console.error('Error assigning role:', clerkError);
+          // Kontynuuj dalej nawet jeśli przypisanie roli nie zadziałało
+        }
+
         // Dodaj więcej logów dla debugowania
         console.log('Creating test parent...');
         const parent = await prisma.parent.create({
