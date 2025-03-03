@@ -25,54 +25,71 @@ export default function Messenger() {
   const params = useParams();
   const lang = params?.lang || 'pl';
 
+  // Inicjalizacja Socket.IO
   useEffect(() => {
     if (!socket.current && user?.id) {
-        try {
-            socket.current = io("http://localhost:8900", {
-                path: "/socket.io/",
-                transports: ['polling', 'websocket'],
-                autoConnect: true,
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                timeout: 60000,
-                withCredentials: true
-            });
-
-            socket.current.on("connect", () => {
-                console.log("Socket connected with ID:", socket.current.id);
-                socket.current.emit("addUser", user.id);
-            });
-
-            socket.current.on("getMessage", (data) => {
-                console.log("Received message:", data);
-                setArrivalMessage({
-                    sender: data.senderId,
-                    content: data.text,
-                    createdAt: new Date()
+        const initializeSocket = async () => {
+            try {
+                // Inicjalizacja API Socket.IO
+                await fetch('/api/socket');
+                
+                // Tworzenie instancji Socket.IO
+                socket.current = io({
+                    path: '/api/socket',
+                    autoConnect: true,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                    timeout: 60000,
+                    transports: ['websocket', 'polling']
                 });
-            });
 
-            socket.current.io.on("error", (error) => {
-                console.error("Socket Error:", error);
-            });
+                socket.current.on("connect", () => {
+                    console.log("Socket connected with ID:", socket.current.id);
+                    // Określ typ użytkownika na podstawie publicMetadata.role
+                    const userType = user.publicMetadata?.role || 'STUDENT';
+                    socket.current.emit("addUser", { 
+                      userId: user.id, 
+                      userType 
+                    });
+                });
 
-            socket.current.io.on("reconnect", (attempt) => {
-                console.log("Socket Reconnected after", attempt, "attempts");
-                socket.current.emit("addUser", user.id);
-            });
+                socket.current.on("getMessage", (data) => {
+                    console.log("Received message:", data);
+                    setArrivalMessage({
+                        sender: data.senderId,
+                        content: data.text,
+                        createdAt: new Date()
+                    });
+                });
 
-            socket.current.io.on("reconnect_attempt", (attempt) => {
-                console.log("Reconnection attempt:", attempt);
-            });
+                socket.current.on("error", (error) => {
+                    console.error("Socket Error:", error);
+                });
 
-            socket.current.io.on("reconnect_error", (error) => {
-                console.error("Reconnection error:", error);
-            });
+                socket.current.on("reconnect", (attempt) => {
+                    console.log("Socket Reconnected after", attempt, "attempts");
+                    const userType = user.publicMetadata?.role || 'STUDENT';
+                    socket.current.emit("addUser", { 
+                      userId: user.id, 
+                      userType 
+                    });
+                });
 
-        } catch (err) {
-            console.error("Socket initialization error:", err);
-        }
+                socket.current.on("reconnect_attempt", (attempt) => {
+                    console.log("Reconnection attempt:", attempt);
+                });
+
+                socket.current.on("reconnect_error", (error) => {
+                    console.error("Reconnection error:", error);
+                });
+
+            } catch (err) {
+                console.error("Socket initialization error:", err);
+            }
+        };
+
+        initializeSocket();
 
         return () => {
             if (socket.current) {
@@ -86,7 +103,7 @@ export default function Messenger() {
     if (!user?.id) return;
 
     try {
-      const res = await axios.get('/api/conversations');  // ZMIENIONA LINIA
+      const res = await axios.get('/api/conversations');
       console.log("Fetched conversations:", res.data);
 
       if (Array.isArray(res.data)) {
@@ -137,7 +154,6 @@ export default function Messenger() {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // W komponencie Messenger, zaktualizuj handleSubmit:
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentChat?._id || !user?.id) {

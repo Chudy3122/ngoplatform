@@ -1,4 +1,4 @@
-// page.jsx
+// components/conversations/page.jsx
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
@@ -12,25 +12,43 @@ export default function Conversation({ conversation, currentUser, setCurrentChat
   const [isOnline, setIsOnline] = useState(false);
   const socket = useRef(null);
   const params = useParams();
-  const lang = params?.lang || 'pl';  // Usunięto type assertion
+  const lang = params?.lang || 'pl';
   const t = useTranslations();
 
   useEffect(() => {
-    socket.current = io("http://localhost:8900");
-    
-    socket.current.on("userStatusUpdate", (data) => {
-      const otherMember = conversation.members.find(
-        m => m.memberId !== currentUser?.id
-      );
-      
-      if (otherMember && data.userId === otherMember.memberId) {
-        setIsOnline(data.isOnline);
-      }
-    });
+    const initSocket = async () => {
+      try {
+        // Inicjalizacja API Socket.IO
+        await fetch('/api/socket');
+        
+        // Tworzenie instancji Socket.IO
+        socket.current = io({
+          path: '/api/socket',
+          autoConnect: true,
+          transports: ['websocket', 'polling']
+        });
+        
+        socket.current.on("userStatusUpdate", (data) => {
+          const otherMember = conversation.members.find(
+            m => m.memberId !== currentUser?.id
+          );
+          
+          if (otherMember && data.userId === otherMember.memberId) {
+            setIsOnline(data.isOnline);
+          }
+        });
 
-    return () => {
-      socket.current?.disconnect();
+        return () => {
+          if (socket.current) {
+            socket.current.disconnect();
+          }
+        };
+      } catch (err) {
+        console.error("Error initializing socket:", err);
+      }
     };
+
+    initSocket();
   }, [conversation, currentUser]);
 
   useEffect(() => {

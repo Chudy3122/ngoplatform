@@ -1,8 +1,8 @@
 {
-    "version": 2,
-    "functions": {
-      "src/pages/api/socket.js": {
-        "maxDuration": 10
-      }
+  "version": 2,
+  "functions": {
+    "src/app/api/socket/route.js": {
+      "maxDuration": 10
     }
   }
+}

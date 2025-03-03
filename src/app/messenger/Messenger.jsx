@@ -27,14 +27,31 @@ export default function Messenger() {
   const t = useTranslations();
 
   useEffect(() => {
-    socket.current = io("ws://localhost:8900");
-    socket.current.on("getMessage", (data) => {
-      setArrivalMessage({
-        sender: data.senderId,
-        text: data.text,
-        createdAt: Date.now(),
-      });
-    });
+    const initSocket = async () => {
+      try {
+        // Inicjalizacja API Socket.IO
+        await fetch('/api/socket');
+        
+        // Tworzenie instancji Socket.IO
+        socket.current = io({
+          path: '/api/socket',
+          autoConnect: true,
+          transports: ['websocket', 'polling']
+        });
+        
+        socket.current.on("getMessage", (data) => {
+          setArrivalMessage({
+            sender: data.senderId,
+            text: data.text,
+            createdAt: Date.now(),
+          });
+        });
+      } catch (err) {
+        console.error("Error initializing socket:", err);
+      }
+    };
+    
+    initSocket();
   }, []);
 
   useEffect(() => {
@@ -44,16 +61,24 @@ export default function Messenger() {
   }, [arrivalMessage, currentChat]);
 
   useEffect(() => {
-    socket.current.emit("addUser", user._id);
-    socket.current.on("getUsers", (users) => {
-      setOnlineUsers(
-        user.followings.filter((f) => users.some((u) => u.userId === f))
-      );
-    });
+    if (socket.current && user?._id) {
+      socket.current.emit("addUser", {
+        userId: user._id,
+        userType: user.role || 'STUDENT'
+      });
+      
+      socket.current.on("getUsers", (users) => {
+        setOnlineUsers(
+          user.followings?.filter((f) => users.some((u) => u.userId === f)) || []
+        );
+      });
+    }
   }, [user]);
 
   useEffect(() => {
     const getConversations = async () => {
+      if (!user?._id) return;
+      
       try {
         const res = await axios.get("/conversations/" + user._id);
         setConversations(res.data);
@@ -62,10 +87,12 @@ export default function Messenger() {
       }
     };
     getConversations();
-  }, [user._id]);
+  }, [user?._id]);
 
   useEffect(() => {
     const getMessages = async () => {
+      if (!currentChat?._id) return;
+      
       try {
         const res = await axios.get("/messages/" + currentChat?._id);
         setMessages(res.data);
