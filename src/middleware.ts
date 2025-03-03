@@ -36,8 +36,21 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
 
   // Jeśli użytkownik jest zalogowany i próbuje dostać się do strony logowania lub rejestracji
   if (session?.userId && isPublicPath(pathname)) {
-    const userRole = (session.sessionClaims?.metadata as { role?: string })?.role || 'student';
-    return NextResponse.redirect(new URL(`/${locale}/${userRole}`, request.url));
+    // Przekieruj na dashboard zamiast na stronę roli
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+  }
+
+  // Sprawdź czy użytkownik ma rolę
+  const userRole = (session?.sessionClaims?.metadata as { role?: string })?.role;
+  
+  // Jeśli użytkownik nie ma roli, przekieruj na onboarding
+  if (session?.userId && !userRole && !pathname.includes('/onboarding')) {
+    return NextResponse.redirect(new URL(`/${locale}/onboarding`, request.url));
+  }
+
+  // Jeśli użytkownik jest na głównej stronie, przekieruj na dashboard
+  if (session?.userId && (pathname === `/${locale}` || pathname === `/${locale}/`)) {
+    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
   // Jeśli użytkownik nie jest zalogowany i próbuje dostać się do chronionej strony
