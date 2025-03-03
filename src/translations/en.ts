@@ -430,6 +430,27 @@ export const en = {
       },
     },
     
+    sharedFiles: {
+      title: "Share file",
+      description: "Select users to share this file with.",
+      descriptionWithFile: "Select a file and users to share it with.",
+      selectFile: "Select file",
+      upload: "Upload file",
+      shareWith: "Share with",
+      searchPlaceholder: "Search users...",
+      noUsers: "No users found",
+      searchToFind: "Type to search for users",
+      cancel: "Cancel",
+      share: "Share",
+      processing: "Processing...",
+      successUpload: "File uploaded successfully",
+      errorUpload: "Failed to upload file",
+      successShare: "File shared successfully",
+      errorShare: "Failed to share file",
+      noFile: "No file selected",
+      selectUsersError: "Please select at least one user"
+    },
+
     // Dodajemy sekcje dla wiadomości
     messages: {
       title: "Messages",

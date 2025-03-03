@@ -430,6 +430,28 @@ export const pl = {
       },
     },
     
+    // Dla pliku pl.ts - dodaj tę sekcję
+    sharedFiles: {
+      title: "Udostępnij plik",
+      description: "Wybierz użytkowników, którym chcesz udostępnić ten plik.",
+      descriptionWithFile: "Wybierz plik i użytkowników, którym chcesz go udostępnić.",
+      selectFile: "Wybierz plik",
+      upload: "Wgraj plik",
+      shareWith: "Udostępnij",
+      searchPlaceholder: "Szukaj użytkowników...",
+      noUsers: "Nie znaleziono użytkowników",
+      searchToFind: "Wpisz, aby wyszukać użytkowników",
+      cancel: "Anuluj",
+      share: "Udostępnij",
+      processing: "Przetwarzanie...",
+      successUpload: "Plik został wgrany",
+      errorUpload: "Nie udało się wgrać pliku",
+      successShare: "Plik został udostępniony",
+      errorShare: "Nie udało się udostępnić pliku",
+      noFile: "Nie wybrano pliku",
+      selectUsersError: "Wybierz co najmniej jednego użytkownika"
+    },
+
     // Dodajemy sekcje dla wiadomości
     messages: {
       title: "Wiadomości",

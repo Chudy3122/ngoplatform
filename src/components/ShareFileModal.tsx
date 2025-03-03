@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
 import { useUser } from "@clerk/nextjs";
+import { useTranslations } from "@/hooks/useTranslations";
 
 interface User {
   id: string;
@@ -18,7 +19,7 @@ interface ShareFileModalProps {
   fileName: string;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => Promise<void>; // Dodajemy nowy prop dla odświeżania
+  onSuccess?: () => Promise<void>;
 }
 
 export const ShareFileModal = ({ 
@@ -29,6 +30,7 @@ export const ShareFileModal = ({
   onSuccess 
 }: ShareFileModalProps) => {
   const { user } = useUser();
+  const t = useTranslations();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,11 +52,9 @@ export const ShareFileModal = ({
       setUsers(data);
     } catch (error) {
       console.error('Error searching users:', error);
-      toast.error('Failed to search users');
+      toast.error(t?.sharedFiles?.noUsers || 'No users found');
     }
   };
-
-  
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -80,10 +80,10 @@ export const ShareFileModal = ({
       const data = await response.json();
       setCurrentFileId(data.id);
       setUploadedFile(file);
-      toast.success('File uploaded successfully');
+      toast.success(t?.sharedFiles?.successUpload || 'File uploaded successfully');
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to upload file');
+      toast.error(error instanceof Error ? error.message : (t?.sharedFiles?.errorUpload || 'Failed to upload file'));
     } finally {
       setLoading(false);
     }
@@ -91,12 +91,12 @@ export const ShareFileModal = ({
 
   const handleShare = async () => {
     if (selectedUsers.length === 0) {
-      toast.error('Please select at least one user');
+      toast.error(t?.sharedFiles?.selectUsersError || 'Please select at least one user');
       return;
     }
   
     if (!currentFileId) {
-      toast.error('No file selected');
+      toast.error(t?.sharedFiles?.noFile || 'No file selected');
       return;
     }
   
@@ -115,7 +115,7 @@ export const ShareFileModal = ({
         },
         body: JSON.stringify({
           fileId: currentFileId,
-          targetUserIds: selectedUsers, // Teraz wysyłamy całą tablicę ID
+          targetUserIds: selectedUsers,
           accessType: 'READ'
         }),
       });
@@ -129,14 +129,14 @@ export const ShareFileModal = ({
       const data = await response.json();
       console.log('Share response:', data);
   
-      toast.success(`File shared with ${selectedUsers.length} user${selectedUsers.length > 1 ? 's' : ''}`);
+      toast.success(t?.sharedFiles?.successShare || `File shared successfully`);
       if (onSuccess) {
         await onSuccess();
       }
       onClose();
     } catch (error) {
       console.error('Share error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to share file');
+      toast.error(error instanceof Error ? error.message : (t?.sharedFiles?.errorShare || 'Failed to share file'));
     } finally {
       setLoading(false);
     }
@@ -146,18 +146,18 @@ export const ShareFileModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] menu-sharedfiles-modal">
         <DialogHeader>
-          <DialogTitle>Udostępnij plik</DialogTitle>
+          <DialogTitle>{t?.sharedFiles?.title || 'Share file'}</DialogTitle>
           <DialogDescription>
             {initialFileId ? 
-              'Wybierz użytkowników, którym chcesz udostępnić ten plik.' :
-              'Wybierz plik i użytkowników, którym chcesz go udostępnić.'
+              (t?.sharedFiles?.description || 'Select users to share this file with.') :
+              (t?.sharedFiles?.descriptionWithFile || 'Select a file and users to share it with.')
             }
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Select File</label>
+            <label className="block text-sm font-medium text-gray-700">{t?.sharedFiles?.selectFile || 'Select File'}</label>
             <div className="flex gap-2">
               <input
                 type="file"
@@ -171,7 +171,7 @@ export const ShareFileModal = ({
                 className="flex items-center gap-2"
               >
                 <Upload className="w-4 h-4" />
-                Upload File
+                {t?.sharedFiles?.upload || 'Upload File'}
               </Button>
               {uploadedFile && (
                 <div className="flex-1 p-2 bg-gray-50 rounded truncate">
@@ -182,10 +182,10 @@ export const ShareFileModal = ({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Share with</label>
+            <label className="block text-sm font-medium text-gray-700">{t?.sharedFiles?.shareWith || 'Share with'}</label>
             <Input
               type="text"
-              placeholder="Search users..."
+              placeholder={t?.sharedFiles?.searchPlaceholder || 'Search users...'}
               value={searchQuery}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 setSearchQuery(e.target.value);
@@ -196,7 +196,7 @@ export const ShareFileModal = ({
           </div>
 
           <div className="max-h-60 overflow-y-auto border rounded p-2">
-            {users.map((user) => (
+            {users.length > 0 ? users.map((user) => (
               <div
                 key={user.id}
                 className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
@@ -218,7 +218,11 @@ export const ShareFileModal = ({
                   <div className="text-sm text-gray-500">{user.email}</div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="p-2 text-center text-gray-500">
+                {searchQuery.length > 1 ? (t?.sharedFiles?.noUsers || 'No users found') : (t?.sharedFiles?.searchToFind || 'Type to search for users')}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">
@@ -227,7 +231,7 @@ export const ShareFileModal = ({
               className="bg-transparent border border-gray-300 text-gray-700 hover:bg-gray-50"
               onClick={onClose}
             >
-              Cancel
+              {t?.sharedFiles?.cancel || t?.common?.cancel || 'Cancel'}
             </Button>
             <Button
               type="button"
@@ -235,7 +239,7 @@ export const ShareFileModal = ({
               onClick={handleShare}
               disabled={loading || selectedUsers.length === 0 || (!currentFileId && !uploadedFile)}
             >
-              {loading ? 'Processing...' : 'Share'}
+              {loading ? (t?.sharedFiles?.processing || 'Processing...') : (t?.sharedFiles?.share || 'Share')}
             </Button>
           </div>
         </div>
