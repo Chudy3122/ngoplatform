@@ -25,18 +25,18 @@ export default function Messenger() {
   const params = useParams();
   const lang = params?.lang || 'pl';
 
-  // Inicjalizacja Socket.IO
+  // Inicjalizacja Socket.IO bezpośrednio w useEffect (bez osobnej funkcji)
   useEffect(() => {
     if (!socket.current && user?.id) {
-      const initializeSocket = async () => {
+      // Asynchroniczna inicjalizacja bezpośrednio w useEffect
+      (async () => {
         try {
           // Inicjalizacja API Socket.IO
           const response = await fetch('/api/socket');
-          if (!response.ok) {
-            throw new Error(`Socket API responded with status: ${response.status}`);
-          }
+          console.log("Socket API response:", response.status);
           
           // Tworzenie instancji Socket.IO
+          console.log("Creating Socket.IO instance...");
           socket.current = io({
             path: '/api/socket',
             autoConnect: true,
@@ -46,10 +46,11 @@ export default function Messenger() {
             reconnectionDelayMax: 5000,
             randomizationFactor: 0.5,
             timeout: 20000,
-            // Ustawienie pollingu jako pierwszego transportu dla lepszej kompatybilności z Vercel
+            // Najpierw polling, potem websocket
             transports: ['polling', 'websocket']
           });
 
+          // Obsługa zdarzeń Socket.IO
           socket.current.on("connect", () => {
             console.log("Socket connected with ID:", socket.current.id);
             // Określ typ użytkownika na podstawie publicMetadata.role
@@ -62,13 +63,6 @@ export default function Messenger() {
 
           socket.current.on("connect_error", (error) => {
             console.error("Connection error:", error);
-            // Spróbuj przełączyć na polling, jeśli wystąpił błąd z WebSocket
-            if (socket.current.io.engine.transport.name === 'websocket') {
-              console.log("Falling back to polling transport");
-              socket.current.io.engine.transport.once('open', () => {
-                console.log("Polling transport connected");
-              });
-            }
           });
 
           socket.current.on("getMessage", (data) => {
@@ -96,25 +90,18 @@ export default function Messenger() {
               userType 
             });
           });
-
-          socket.current.on("reconnect_attempt", (attempt) => {
-            console.log("Reconnection attempt:", attempt);
-          });
-
-          socket.current.on("reconnect_error", (error) => {
-            console.error("Reconnection error:", error);
-          });
-
+          
         } catch (err) {
           console.error("Socket initialization error:", err);
         }
-      };
+      })();
 
-      initializeSocket();
-
+      // Funkcja czyszcząca
       return () => {
         if (socket.current) {
+          console.log("Disconnecting socket...");
           socket.current.disconnect();
+          socket.current = null;
         }
       };
     }
@@ -257,13 +244,6 @@ export default function Messenger() {
     } catch (err) {
       console.error("Error creating new conversation:", err);
     }
-  };
-
-  // Funkcja do sprawdzenia, czy użytkownik jest online
-  const checkUserOnlineStatus = (memberId) => {
-    // Tu możemy dodać logikę sprawdzającą status użytkownika
-    // na podstawie danych z socket.io
-    return false; // Domyślnie zwracamy false
   };
 
   return (

@@ -1,61 +1,25 @@
-// components/conversations/page.jsx
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import axios from "axios";
-import { io } from "socket.io-client";
 import "./page.css";
 import { useTranslations } from "@/hooks/useTranslations";
 
 export default function Conversation({ conversation, currentUser, setCurrentChat, currentChat }) {
   const [user, setUser] = useState(null);
   const [isOnline, setIsOnline] = useState(false);
-  const socket = useRef(null);
   const params = useParams();
   const lang = params?.lang || 'pl';
   const t = useTranslations();
 
-  useEffect(() => {
-    const initSocket = async () => {
-      try {
-        // Inicjalizacja API Socket.IO
-        await fetch('/api/socket');
-        
-        // Tworzenie instancji Socket.IO
-        socket.current = io({
-          path: '/api/socket',
-          autoConnect: true,
-          transports: ['websocket', 'polling']
-        });
-        
-        socket.current.on("userStatusUpdate", (data) => {
-          const otherMember = conversation.members.find(
-            m => m.memberId !== currentUser?.id
-          );
-          
-          if (otherMember && data.userId === otherMember.memberId) {
-            setIsOnline(data.isOnline);
-          }
-        });
-
-        return () => {
-          if (socket.current) {
-            socket.current.disconnect();
-          }
-        };
-      } catch (err) {
-        console.error("Error initializing socket:", err);
-      }
-    };
-
-    initSocket();
-  }, [conversation, currentUser]);
-
+  // Zdarzenia dotyczące statusu użytkownika będą obsługiwane przez główny komponent Messenger
   useEffect(() => {
     const getUserData = async () => {
       try {
-        const otherMember = conversation.members.find(
-          m => m.memberId !== currentUser?.id
+        const otherMember = conversation.members.find(m => 
+          typeof m === 'object' 
+            ? m.memberId !== currentUser?.id 
+            : m !== currentUser?.id
         );
         
         if (!otherMember) {
@@ -63,10 +27,13 @@ export default function Conversation({ conversation, currentUser, setCurrentChat
           return;
         }
   
+        const userId = typeof otherMember === 'object' ? otherMember.memberId : otherMember;
+        const userType = typeof otherMember === 'object' ? otherMember.memberType : 'STUDENT';
+  
         const res = await axios.get('/api/users/status', {
           params: {
-            userId: otherMember.memberId,
-            userType: otherMember.memberType
+            userId: userId,
+            userType: userType
           }
         });
         
