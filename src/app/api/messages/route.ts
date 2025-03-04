@@ -1,17 +1,32 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
-import { MessageStatus, Prisma, UserType } from "@prisma/client";
+import { getAuth } from "@clerk/nextjs/server";
+import { Prisma } from "@prisma/client";
 
-export async function GET(req: Request) {
+// Dodanie obsługi CORS
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.userId) {
+    // Używamy getAuth zamiast auth
+    const { userId } = getAuth(req);
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
     const conversationId = searchParams.get('conversationId');
+
+    console.log("GET /api/messages - Pobieranie wiadomości dla konwersacji:", conversationId, "użytkownik:", userId);
 
     if (!conversationId) {
       return NextResponse.json(
@@ -20,59 +35,40 @@ export async function GET(req: Request) {
       );
     }
 
+    // Sprawdź czy konwersacja istnieje
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { members: true }
+    });
+
+    if (!conversation) {
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
+    }
+
+    // Sprawdź czy użytkownik jest członkiem konwersacji
+    const isMember = conversation.members.some(m => m.memberId === userId);
+    if (!isMember) {
+      return NextResponse.json(
+        { error: "User not in conversation" },
+        { status: 403 }
+      );
+    }
+
+    // Pobierz wiadomości
     const messages = await prisma.message.findMany({
       where: {
         conversationId,
-        conversation: {
-          members: {
-            some: {
-              memberId: session.userId
-            }
-          }
-        }
-      },
-      include: {
-        conversation: true
       },
       orderBy: {
         createdAt: 'asc'
       }
     });
 
-    // Optional: Fetch user details for each message if needed
-    const messagesWithSenderDetails = await Promise.all(
-      messages.map(async (message) => {
-        let senderDetails = null;
-        switch (message.senderType) {
-          case 'ADMIN':
-            senderDetails = await prisma.admin.findUnique({
-              where: { id: message.senderId }
-            });
-            break;
-          case 'TEACHER':
-            senderDetails = await prisma.teacher.findUnique({
-              where: { id: message.senderId }
-            });
-            break;
-          case 'STUDENT':
-            senderDetails = await prisma.student.findUnique({
-              where: { id: message.senderId }
-            });
-            break;
-          case 'PARENT':
-            senderDetails = await prisma.parent.findUnique({
-              where: { id: message.senderId }
-            });
-            break;
-        }
-        return {
-          ...message,
-          sender: senderDetails
-        };
-      })
-    );
-
-    return NextResponse.json(messagesWithSenderDetails);
+    console.log(`Znaleziono ${messages.length} wiadomości`);
+    return NextResponse.json(messages);
   } catch (error) {
     console.error('Error fetching messages:', error);
     return NextResponse.json(
@@ -82,117 +78,85 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.userId) {
+    console.log("POST /api/messages - Próba utworzenia nowej wiadomości");
+    
+    // Używamy getAuth zamiast auth
+    const { userId } = getAuth(req);
+    if (!userId) {
+      console.log("Brak autoryzacji - brak userId");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { content, conversationId } = await req.json();
+    console.log("Autoryzowany użytkownik:", userId);
+
+    // Pobieranie danych z żądania
+    const reqData = await req.json();
+    console.log("Dane żądania:", reqData);
     
-    const conversationMember = await prisma.conversationMember.findFirst({
-      where: {
-        memberId: session.userId,
-        conversationId: conversationId
-      }
+    const { content, conversationId } = reqData;
+    
+    if (!content || !conversationId) {
+      console.log("Brak wymaganych pól:", { content, conversationId });
+      return NextResponse.json(
+        { error: "Missing required fields: content, conversationId" },
+        { status: 400 }
+      );
+    }
+
+    // Sprawdź czy konwersacja istnieje
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { members: true }
     });
 
-    if (!conversationMember) {
+    if (!conversation) {
+      console.log("Konwersacja nie istnieje:", conversationId);
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
+    }
+
+    // Znajdź członkostwo użytkownika w konwersacji
+    const member = conversation.members.find(m => m.memberId === userId);
+    if (!member) {
+      console.log("Użytkownik nie jest członkiem konwersacji");
       return NextResponse.json(
         { error: "User not in conversation" },
         { status: 403 }
       );
     }
 
-    // Verify user exists in their respective table
-    let userExists = false;
-    switch (conversationMember.memberType) {
-      case 'ADMIN':
-        userExists = await prisma.admin.findUnique({ 
-          where: { id: session.userId } 
-        }) !== null;
-        break;
-      case 'TEACHER':
-        userExists = await prisma.teacher.findUnique({ 
-          where: { id: session.userId } 
-        }) !== null;
-        break;
-      case 'STUDENT':
-        userExists = await prisma.student.findUnique({ 
-          where: { id: session.userId } 
-        }) !== null;
-        break;
-      case 'PARENT':
-        userExists = await prisma.parent.findUnique({ 
-          where: { id: session.userId } 
-        }) !== null;
-        break;
-    }
-
-    if (!userExists) {
-      return NextResponse.json(
-        { error: "User does not exist in the system" },
-        { status: 404 }
-      );
-    }
-
-    const messageData: Prisma.MessageUncheckedCreateInput = {
-      content,
-      conversationId,
-      senderId: session.userId,
-      senderType: conversationMember.memberType,
-      status: 'SENT'
-    };
-
-    console.log("Creating message with data:", messageData);
-
-    // Use transaction for consistency
-    const result = await prisma.$transaction(async (prisma) => {
-      const message = await prisma.message.create({
-        data: messageData,
-        include: {
-          conversation: true
-        }
-      });
-
-      // Get sender details based on type
-      let sender;
-      switch (conversationMember.memberType) {
-        case 'ADMIN':
-          sender = await prisma.admin.findUnique({ where: { id: session.userId } });
-          break;
-        case 'TEACHER':
-          sender = await prisma.teacher.findUnique({ where: { id: session.userId } });
-          break;
-        case 'STUDENT':
-          sender = await prisma.student.findUnique({ where: { id: session.userId } });
-          break;
-        case 'PARENT':
-          sender = await prisma.parent.findUnique({ where: { id: session.userId } });
-          break;
+    // Tworzenie wiadomości (uproszczone)
+    const message = await prisma.message.create({
+      data: {
+        content,
+        conversationId,
+        senderId: userId,
+        senderType: member.memberType,
+        status: 'SENT'
       }
-
-      await prisma.conversation.update({
-        where: { id: conversationId },
-        data: { lastMessageAt: new Date() }
-      });
-
-      return {
-        ...message,
-        sender
-      };
     });
 
-    return NextResponse.json(result);
+    // Aktualizacja czasu ostatniej wiadomości
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { lastMessageAt: new Date() }
+    });
+
+    console.log("Wiadomość utworzona pomyślnie, ID:", message.id);
+    return NextResponse.json(message);
   } catch (error) {
     console.error('Error creating message:', error);
+    // Szczegółowe logowanie błędów Prisma
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      console.error('Error code:', error.code);
-      console.error('Error meta:', error.meta);
+      console.error('Prisma error code:', error.code);
+      console.error('Prisma error meta:', error.meta);
     }
     return NextResponse.json(
-      { error: "Failed to create message", details: error },
+      { error: "Failed to create message", details: String(error) },
       { status: 500 }
     );
   }
