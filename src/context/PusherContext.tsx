@@ -56,71 +56,119 @@ export const PusherProvider: React.FC<PusherProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!user?.id) return;
 
-    // Konfiguracja Pusher z autoryzacją
+    // Przygotowanie nagłówków autoryzacji
+    const headers: Record<string, string> = {};
+    if (user?.id) {
+      headers['Authorization'] = `Bearer ${user.id}`;
+    }
+
+    // Konfiguracja Pusher - WAŻNE - używamy public-key z NEXT_PUBLIC_PUSHER_KEY
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'eu',
       forceTLS: true,
-      authEndpoint: '/api/pusher/auth',
+      authEndpoint: '/api/pusher/auth', 
       auth: {
-        headers: {
-          // Dodaj token sesji Clerk dla autoryzacji
-          'Authorization': `Bearer ${user.id}`,
-        },
-      },
+        headers // Przekazanie nagłówków autoryzacji
+      }
     });
 
-    console.log("Pusher initialized", {
-      key: process.env.NEXT_PUBLIC_PUSHER_KEY,
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
-      authEndpoint: '/api/pusher/auth'
-    });
+    console.log("Inicjalizacja Pusher z kluczem:", process.env.NEXT_PUBLIC_PUSHER_KEY);
+    console.log("Używam endpointu autoryzacji:", '/api/pusher/auth');
 
-    // Bezpieczne ustawienie klienta Pusher
     setPusherClient((prevState) => {
       if (prevState) {
         try {
           prevState.disconnect();
         } catch (err) {
-          console.error("Error disconnecting previous Pusher instance:", err);
+          console.error("Błąd rozłączania poprzedniej instancji Pusher:", err);
         }
       }
       return pusher;
     });
 
-    // Kanał dla aktualizacji statusu użytkowników
-    const presenceChannel = pusher.subscribe('presence-users');
-    
-    // Obsługa zdarzeń kanału presence
-    presenceChannel.bind('pusher:subscription_succeeded', (members: PusherMembers) => {
-      console.log('Successfully subscribed to presence channel', members);
-      
-      // Zapisz aktualnie online użytkowników
-      const onlineSet = new Set<string>();
-      members.each((member: PusherMember) => onlineSet.add(member.id));
-      setOnlineUsers(onlineSet);
-    });
-    
-    presenceChannel.bind('pusher:member_added', (member: PusherMember) => {
-      console.log('Member added to presence channel', member);
-      setOnlineUsers(prev => {
-        const newSet = new Set(prev);
-        newSet.add(member.id);
-        return newSet;
-      });
-    });
-    
-    presenceChannel.bind('pusher:member_removed', (member: PusherMember) => {
-      console.log('Member removed from presence channel', member);
-      setOnlineUsers(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(member.id);
-        return newSet;
-      });
+    // Obsługa wydarzeń połączenia
+    pusher.connection.bind('connected', () => {
+      console.log("Połączono z Pusher! Socket ID:", pusher.connection.socket_id);
+      updateUserStatusOnline();
     });
 
-    // Własne zdarzenie zmiany statusu
-    presenceChannel.bind('user-status-change', (data: UserStatusData) => {
-      console.log("User status change", data);
+    pusher.connection.bind('disconnected', () => {
+      console.log("Rozłączono z Pusher");
+    });
+
+    pusher.connection.bind('error', (error: any) => {
+      console.error("Błąd połączenia Pusher:", error);
+    });
+
+    // Aktualizacja statusu online po połączeniu
+    const updateUserStatusOnline = async () => {
+      try {
+        const userType = user.publicMetadata?.role || 'STUDENT';
+        await axios.post('/api/users/status', {
+          userId: user.id,
+          userType,
+          isOnline: true
+        });
+        console.log("Status użytkownika ustawiony na online");
+      } catch (err) {
+        console.error("Błąd aktualizacji statusu:", err);
+      }
+    };
+
+    // Kanał publiczny dla ogólnych aktualizacji
+    const publicChannel = pusher.subscribe('public-updates');
+    publicChannel.bind('user-status-change', (data: UserStatusData) => {
+      console.log("Zmiana statusu użytkownika (kanał publiczny):", data);
+      updateUserStatus(data);
+    });
+
+    // Próba subskrypcji kanału presence (nie krytyczna)
+    try {
+      const presenceChannel = pusher.subscribe('presence-users');
+      
+      presenceChannel.bind('pusher:subscription_succeeded', (members: PusherMembers) => {
+        console.log('Subskrypcja kanału presence udana', members);
+        const onlineSet = new Set<string>();
+        members.each((member: PusherMember) => onlineSet.add(member.id));
+        setOnlineUsers(onlineSet);
+      });
+      
+      presenceChannel.bind('pusher:member_added', (member: PusherMember) => {
+        console.log('Użytkownik dołączył do kanału presence', member);
+        updateUserStatus({ userId: member.id, isOnline: true });
+      });
+      
+      presenceChannel.bind('pusher:member_removed', (member: PusherMember) => {
+        console.log('Użytkownik opuścił kanał presence', member);
+        updateUserStatus({ userId: member.id, isOnline: false });
+      });
+
+      // Własne zdarzenie zmiany statusu (z api/users/status)
+      presenceChannel.bind('user-status-change', (data: UserStatusData) => {
+        console.log("Zmiana statusu użytkownika (z API):", data);
+        updateUserStatus(data);
+      });
+    } catch (err) {
+      console.error("Błąd subskrypcji kanału presence:", err);
+    }
+
+    // Kanał prywatny dla wiadomości
+    try {
+      const privateChannel = pusher.subscribe(`private-user-${user.id}`);
+      
+      privateChannel.bind('new-message', (data: any) => {
+        console.log("Nowa wiadomość przez Pusher:", data);
+      });
+
+      privateChannel.bind('pusher:subscription_error', (error: any) => {
+        console.error("Błąd subskrypcji kanału prywatnego:", error);
+      });
+    } catch (err) {
+      console.error("Błąd subskrypcji kanału prywatnego:", err);
+    }
+
+    // Funkcja pomocnicza do aktualizacji statusu użytkownika
+    function updateUserStatus(data: UserStatusData) {
       setOnlineUsers(prev => {
         const newSet = new Set(prev);
         if (data.isOnline) {
@@ -130,55 +178,37 @@ export const PusherProvider: React.FC<PusherProviderProps> = ({ children }) => {
         }
         return newSet;
       });
-    });
-    
-    // Kanał dla własnych wiadomości prywatnych
-    const privateChannel = pusher.subscribe(`private-user-${user.id}`);
-    
-    privateChannel.bind('new-message', (data: any) => {
-      console.log("Received new message via Pusher:", data);
-      // Obsługa odbioru wiadomości jest w komponencie Messenger
-    });
-
-    // Ustawienie własnego statusu online
-    const updateUserStatus = async () => {
-      try {
-        const userType = user.publicMetadata?.role || 'STUDENT';
-        await axios.post('/api/users/status', {
-          userId: user.id,
-          userType,
-          isOnline: true
-        });
-        console.log("User status set to online");
-      } catch (err) {
-        console.error("Error updating user status:", err);
-      }
-    };
-
-    updateUserStatus();
+    }
 
     // Czyszczenie przy odmontowaniu
     return () => {
       if (pusher) {
-        try {
-          pusher.unsubscribe('presence-users');
-          pusher.unsubscribe(`private-user-${user.id}`);
-          
-          // Ustawienie statusu offline przed odłączeniem
-          const userType = user.publicMetadata?.role || 'STUDENT';
-          axios.post('/api/users/status', {
-            userId: user.id,
-            userType,
-            isOnline: false
-          }).catch(err => {
-            console.error("Error updating offline status:", err);
-          });
-
-          pusher.disconnect();
-        } catch (err) {
-          console.error("Error during cleanup:", err);
-        }
-        setPusherClient(null);
+        // Ustawienie statusu offline przed odłączeniem
+        const updateOffline = async () => {
+          try {
+            const userType = user.publicMetadata?.role || 'STUDENT';
+            await axios.post('/api/users/status', {
+              userId: user.id,
+              userType,
+              isOnline: false
+            });
+            console.log("Status użytkownika ustawiony na offline");
+          } catch (err) {
+            console.error("Błąd aktualizacji statusu offline:", err);
+          }
+        };
+        
+        updateOffline().finally(() => {
+          try {
+            pusher.unsubscribe('public-updates');
+            pusher.unsubscribe('presence-users');
+            pusher.unsubscribe(`private-user-${user.id}`);
+            pusher.disconnect();
+          } catch (err) {
+            console.error("Błąd podczas rozłączania Pusher:", err);
+          }
+          setPusherClient(null);
+        });
       }
     };
   }, [user?.id]);
@@ -188,11 +218,18 @@ export const PusherProvider: React.FC<PusherProviderProps> = ({ children }) => {
     return onlineUsers.has(userId);
   };
 
-  // Wysyłanie wiadomości
+  // Wysyłanie wiadomości przez Pusher
   const sendMessage = async (receiverId: string, text: string, conversationId: string): Promise<void> => {
     if (!user?.id) return;
 
     try {
+      // Najpierw zapisz wiadomość przez API
+      const response = await axios.post('/api/messages', {
+        content: text,
+        conversationId: conversationId
+      });
+      
+      // Potem wyślij powiadomienie przez Pusher
       await axios.post('/api/pusher', {
         channel: `private-user-${receiverId}`,
         event: 'new-message',
@@ -202,9 +239,9 @@ export const PusherProvider: React.FC<PusherProviderProps> = ({ children }) => {
           conversationId
         }
       });
-      console.log("Message sent via Pusher");
+      console.log("Powiadomienie o wiadomości wysłane przez Pusher");
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Błąd wysyłania wiadomości:", error);
       throw error;
     }
   };

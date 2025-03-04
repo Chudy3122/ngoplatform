@@ -82,8 +82,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Pusher error:', error);
+    const errorMessage = error?.message || 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to trigger Pusher event: ' + (error?.message || String(error)) },
+      { error: `Failed to trigger Pusher event: ${errorMessage}` },
       { status: 500 }
     );
   }

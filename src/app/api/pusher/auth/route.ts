@@ -30,7 +30,11 @@ export async function OPTIONS() {
 
 // Obsługa żądań POST dla autoryzacji Pusher
 export async function POST(request: NextRequest) {
+  // Logowanie dla debugowania
+  console.log("Otrzymano żądanie autoryzacji Pusher");
+  
   if (!pusher) {
+    console.error("Pusher nie jest skonfigurowany");
     return NextResponse.json(
       { error: 'Pusher is not configured' },
       { status: 500 }
@@ -43,17 +47,32 @@ export async function POST(request: NextRequest) {
     const socketId = formData.get('socket_id') as string;
     const channel = formData.get('channel_name') as string;
 
+    console.log("Dane autoryzacji:", { socketId, channel });
+
     if (!socketId || !channel) {
+      console.error("Brak wymaganych parametrów");
       return NextResponse.json(
         { error: 'Missing required parameters' },
         { status: 400 }
       );
     }
 
-    // Pobierz informację o zalogowanym użytkowniku
-    const { userId } = getAuth(request);
+    // Ekstrakcja tokenu z nagłówka Authorization
+    const authHeader = request.headers.get('authorization');
+    let userId = null;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      userId = authHeader.substring(7); // Usunięcie "Bearer " z początku
+      console.log("ID użytkownika z tokenu Bearer:", userId);
+    } else {
+      // Próba pobrania ID użytkownika przez Clerk
+      const auth = getAuth(request);
+      userId = auth?.userId;
+      console.log("ID użytkownika z Clerk:", userId);
+    }
 
     if (!userId) {
+      console.error("Brak autoryzacji - użytkownik niezalogowany");
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -68,27 +87,36 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    console.log("Autoryzacja kanału:", channel);
+
     // Autoryzuj kanał
+    let authResponse;
+    
     // Dla kanałów prywatnych (private-*)
     if (channel.startsWith('private-')) {
-      const authResponse = pusher.authorizeChannel(socketId, channel);
-      return NextResponse.json(authResponse);
+      authResponse = pusher.authorizeChannel(socketId, channel);
+      console.log("Autoryzacja kanału prywatnego powiodła się");
     } 
     // Dla kanałów obecności (presence-*)
     else if (channel.startsWith('presence-')) {
-      const authResponse = pusher.authorizeChannel(socketId, channel, userData);
-      return NextResponse.json(authResponse);
+      authResponse = pusher.authorizeChannel(socketId, channel, userData);
+      console.log("Autoryzacja kanału presence powiodła się");
+    } else {
+      console.error("Nieznany typ kanału");
+      return NextResponse.json(
+        { error: 'Invalid channel type' },
+        { status: 400 }
+      );
     }
 
-    // Dla nieznanych typów kanałów
-    return NextResponse.json(
-      { error: 'Invalid channel type' },
-      { status: 400 }
-    );
+    console.log("Odpowiedź autoryzacji Pusher:", authResponse);
+    return NextResponse.json(authResponse);
+    
   } catch (error: any) {
-    console.error('Pusher auth error:', error);
+    console.error('Błąd autoryzacji Pusher:', error);
+    const errorMessage = error?.message || 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to authorize Pusher channel: ' + (error?.message || String(error)) },
+      { error: `Failed to authorize Pusher channel: ${errorMessage}` },
       { status: 500 }
     );
   }
