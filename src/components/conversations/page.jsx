@@ -1,3 +1,4 @@
+// src/components/conversations/page.jsx
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -5,14 +6,19 @@ import axios from "axios";
 import "./page.css";
 import { useTranslations } from "@/hooks/useTranslations";
 
-export default function Conversation({ conversation, currentUser, setCurrentChat, currentChat }) {
+export default function Conversation({ 
+  conversation, 
+  currentUser, 
+  setCurrentChat, 
+  currentChat,
+  isUserOnline // Nowa props z funkcją sprawdzającą status
+}) {
   const [user, setUser] = useState(null);
-  const [isOnline, setIsOnline] = useState(false);
   const params = useParams();
   const lang = params?.lang || 'pl';
   const t = useTranslations();
 
-  // Zdarzenia dotyczące statusu użytkownika będą obsługiwane przez główny komponent Messenger
+  // Pobieranie danych użytkownika
   useEffect(() => {
     const getUserData = async () => {
       try {
@@ -23,7 +29,7 @@ export default function Conversation({ conversation, currentUser, setCurrentChat
         );
         
         if (!otherMember) {
-          console.log("No other member found in conversation");
+          console.log("Nie znaleziono drugiego użytkownika w konwersacji");
           return;
         }
   
@@ -39,10 +45,9 @@ export default function Conversation({ conversation, currentUser, setCurrentChat
         
         if (res.data) {
           setUser(res.data);
-          setIsOnline(res.data.isOnline);
         }
       } catch (err) {
-        console.error("Error getting user data:", err);
+        console.error("Błąd pobierania danych użytkownika:", err);
         setUser({ username: t.messages?.unknownUser || "Unknown User" });
       }
     };
@@ -52,11 +57,33 @@ export default function Conversation({ conversation, currentUser, setCurrentChat
     }
   }, [conversation, currentUser]);
 
+  // Funkcja zwracająca nazwę użytkownika
   const getDisplayName = () => {
     if (!user) return t.messages?.loading || "Loading...";
     if (user.username === 'admin') return t.messages?.administrator || "Administrator";
     return user.name || user.username || t.messages?.unknownUser || "Unknown User";
   };
+
+  // Sprawdzenie, czy użytkownik jest online
+  const checkOnlineStatus = () => {
+    if (!user) return false;
+    
+    // Jeśli przekazano funkcję isUserOnline, używamy jej
+    if (isUserOnline && typeof isUserOnline === 'function') {
+      const userId = typeof user === 'object' && user.id ? user.id : 
+                     typeof user === 'string' ? user : null;
+      
+      if (userId) {
+        return isUserOnline(userId);
+      }
+    }
+    
+    // Fallback do statusu z API
+    return user.isOnline || false;
+  };
+
+  // Status online
+  const online = checkOnlineStatus();
 
   return (
     <div 
@@ -72,11 +99,11 @@ export default function Conversation({ conversation, currentUser, setCurrentChat
         <span className="username">{getDisplayName()}</span>
         <div className="status-wrapper">
           <div 
-            className={`status-indicator ${isOnline ? 'online' : 'offline'}`} 
-            title={isOnline ? t.messages?.online : t.messages?.offline}
+            className={`status-indicator ${online ? 'online' : 'offline'}`} 
+            title={online ? t.messages?.online : t.messages?.offline}
           />
           <span className="status-text">
-            {isOnline ? t.messages?.online : t.messages?.offline}
+            {online ? t.messages?.online : t.messages?.offline}
           </span>
         </div>
       </div>

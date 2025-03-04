@@ -8,7 +8,7 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations } from "@/hooks/useTranslations";
 import { useParams } from "next/navigation";
 import axios from "axios";
-import { io } from "socket.io-client";
+import Pusher from 'pusher-js';
 import { useUser } from "@clerk/clerk-react";
 
 export default function Messenger() {
@@ -18,101 +18,113 @@ export default function Messenger() {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [arrivalMessage, setArrivalMessage] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
   const { user } = useUser();
   const scrollRef = useRef();
-  const socket = useRef();
+  const pusherRef = useRef();
   const t = useTranslations();
   const params = useParams();
   const lang = params?.lang || 'pl';
 
-  // Inicjalizacja Socket.IO bezpośrednio w useEffect (bez osobnej funkcji)
+  // Inicjalizacja Pusher
   useEffect(() => {
-    if (!socket.current && user?.id) {
-      // Asynchroniczna inicjalizacja bezpośrednio w useEffect
-      (async () => {
-        try {
-          // Inicjalizacja API Socket.IO
-          const response = await fetch('/api/socket');
-          console.log("Socket API response:", response.status);
-          
-          // Tworzenie instancji Socket.IO
-          console.log("Creating Socket.IO instance...");
-          socket.current = io({
-            path: '/api/socket',
-            autoConnect: true,
-            reconnection: true,
-            reconnectionAttempts: 10,
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            randomizationFactor: 0.5,
-            timeout: 20000,
-            // Najpierw polling, potem websocket
-            transports: ['polling', 'websocket']
-          });
+    if (!pusherRef.current && user?.id) {
+      // Inicjalizacja Pusher
+      pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
+        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
+        encrypted: true
+      });
 
-          // Obsługa zdarzeń Socket.IO
-          socket.current.on("connect", () => {
-            console.log("Socket connected with ID:", socket.current.id);
-            // Określ typ użytkownika na podstawie publicMetadata.role
-            const userType = user.publicMetadata?.role || 'STUDENT';
-            socket.current.emit("addUser", { 
-              userId: user.id, 
-              userType 
-            });
-          });
+      console.log("Inicjalizacja Pusher z kluczem:", process.env.NEXT_PUBLIC_PUSHER_KEY);
 
-          socket.current.on("connect_error", (error) => {
-            console.error("Connection error:", error);
+      // Kanał dla wszystkich użytkowników (status online/offline)
+      const channelName = 'presence-users';
+      console.log("Subskrypcja kanału:", channelName);
+      
+      const presenceChannel = pusherRef.current.subscribe(channelName);
+      
+      presenceChannel.bind('user-status-change', (data) => {
+        console.log("Zmiana statusu użytkownika:", data);
+        if (data.isOnline) {
+          setOnlineUsers(prev => {
+            const newSet = new Set(prev);
+            newSet.add(data.userId);
+            return newSet;
           });
-
-          socket.current.on("getMessage", (data) => {
-            console.log("Received message:", data);
-            setArrivalMessage({
-              sender: data.senderId,
-              content: data.text,
-              createdAt: new Date()
-            });
+        } else {
+          setOnlineUsers(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(data.userId);
+            return newSet;
           });
-
-          socket.current.on("error", (error) => {
-            console.error("Socket Error:", error);
-          });
-
-          socket.current.on("disconnect", (reason) => {
-            console.log("Socket disconnected:", reason);
-          });
-
-          socket.current.on("reconnect", (attempt) => {
-            console.log("Socket Reconnected after", attempt, "attempts");
-            const userType = user.publicMetadata?.role || 'STUDENT';
-            socket.current.emit("addUser", { 
-              userId: user.id, 
-              userType 
-            });
-          });
-          
-        } catch (err) {
-          console.error("Socket initialization error:", err);
         }
-      })();
+      });
 
-      // Funkcja czyszcząca
+      // Aktualizacja statusu użytkownika
+      const updateUserStatus = async () => {
+        try {
+          const userType = user.publicMetadata?.role || 'STUDENT';
+          await axios.post('/api/users/status', {
+            userId: user.id,
+            userType,
+            isOnline: true
+          });
+          console.log("Status użytkownika zaktualizowany na online");
+        } catch (err) {
+          console.error("Błąd aktualizacji statusu:", err);
+        }
+      };
+
+      updateUserStatus();
+
+      // Obsługa wiadomości prywatnych
+      const privateChannelName = `private-user-${user.id}`;
+      console.log("Subskrypcja kanału prywatnego:", privateChannelName);
+      
+      const privateChannel = pusherRef.current.subscribe(privateChannelName);
+      
+      privateChannel.bind('new-message', (data) => {
+        console.log("Nowa wiadomość:", data);
+        setArrivalMessage({
+          sender: data.senderId,
+          content: data.text,
+          createdAt: new Date()
+        });
+      });
+
+      // Obsługa błędów Pusher
+      pusherRef.current.connection.bind('error', (err) => {
+        console.error("Błąd połączenia Pusher:", err);
+      });
+
+      // Czyszczenie przy odmontowaniu komponentu
       return () => {
-        if (socket.current) {
-          console.log("Disconnecting socket...");
-          socket.current.disconnect();
-          socket.current = null;
+        if (pusherRef.current) {
+          console.log("Odłączanie Pusher...");
+          pusherRef.current.unsubscribe('presence-users');
+          pusherRef.current.unsubscribe(`private-user-${user.id}`);
+          pusherRef.current.disconnect();
+          pusherRef.current = null;
+          
+          // Aktualizacja statusu offline
+          const userType = user.publicMetadata?.role || 'STUDENT';
+          axios.post('/api/users/status', {
+            userId: user.id,
+            userType,
+            isOnline: false
+          }).catch(err => console.error("Błąd aktualizacji statusu offline:", err));
         }
       };
     }
   }, [user]);
 
+  // Pobranie konwersacji
   const fetchConversations = async () => {
     if (!user?.id) return;
 
     try {
       const res = await axios.get('/api/conversations');
-      console.log("Fetched conversations:", res.data);
+      console.log("Pobrane konwersacje:", res.data);
 
       if (Array.isArray(res.data)) {
         const formattedConversations = res.data.map(conv => ({
@@ -123,7 +135,7 @@ export default function Messenger() {
         setConversations(formattedConversations);
       }
     } catch (err) {
-      console.error("Error fetching conversations:", err);
+      console.error("Błąd pobierania konwersacji:", err);
       setConversations([]);
     } finally {
       setIsLoading(false);
@@ -134,6 +146,7 @@ export default function Messenger() {
     fetchConversations();
   }, [user]);
 
+  // Obsługa nowych wiadomości
   useEffect(() => {
     if (arrivalMessage && currentChat?.members?.some(m => 
       m.memberId === arrivalMessage.sender || m === arrivalMessage.sender
@@ -142,6 +155,7 @@ export default function Messenger() {
     }
   }, [arrivalMessage, currentChat]);
 
+  // Pobieranie wiadomości po wybraniu konwersacji
   useEffect(() => {
     const getMessages = async () => {
       if (!currentChat?._id) return;
@@ -150,7 +164,7 @@ export default function Messenger() {
         const res = await axios.get(`/api/messages?conversationId=${currentChat._id}`);
         setMessages(res.data);
       } catch (err) {
-        console.error("Error fetching messages:", err);
+        console.error("Błąd pobierania wiadomości:", err);
         setMessages([]);
       }
     };
@@ -160,71 +174,79 @@ export default function Messenger() {
     }
   }, [currentChat]);
 
+  // Automatyczne przewijanie do najnowszej wiadomości
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Wysyłanie wiadomości
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentChat?._id || !user?.id) {
-      console.error("Missing required data for sending message");
+      console.error("Brak wymaganych danych do wysłania wiadomości");
       return;
     }
   
-    // Struktura messageData
+    // Dane wiadomości
     const messageData = {
       content: newMessage,
       conversationId: currentChat._id, // lub currentChat.id
     };
   
     try {
+      // Zapisanie wiadomości przez API
       const res = await axios.post("/api/messages", messageData);
-      console.log("Message response:", res.data);
+      console.log("Odpowiedź po wysłaniu wiadomości:", res.data);
   
+      // Aktualizacja interfejsu
       setMessages(prev => [...prev, res.data]);
       setNewMessage("");
   
-      if (socket.current && socket.current.connected) {
-        const receiverMember = currentChat.members.find(m => 
-          typeof m === 'object' ? m.memberId !== user.id : m !== user.id
-        );
-        
-        if (receiverMember) {
-          const receiverId = typeof receiverMember === 'object' ? 
-            receiverMember.memberId : receiverMember;
-            
-          socket.current.emit("sendMessage", {
+      // Znalezienie odbiorcy
+      const receiverMember = currentChat.members.find(m => 
+        typeof m === 'object' ? m.memberId !== user.id : m !== user.id
+      );
+      
+      if (receiverMember) {
+        const receiverId = typeof receiverMember === 'object' ? 
+          receiverMember.memberId : receiverMember;
+          
+        // Wysłanie powiadomienia przez Pusher
+        await axios.post('/api/pusher', {
+          channel: `private-user-${receiverId}`,
+          event: 'new-message',
+          data: {
             senderId: user.id,
-            receiverId: receiverId,
             text: newMessage,
-          });
-          console.log("Emitted sendMessage event to socket");
-        } else {
-          console.warn("No receiver found in conversation");
-        }
+            conversationId: currentChat._id
+          }
+        });
+        
+        console.log("Powiadomienie o wiadomości wysłane przez Pusher");
       } else {
-        console.warn("Socket not connected, message sent via API only");
+        console.warn("Nie znaleziono odbiorcy w konwersacji");
       }
     } catch (err) {
-      console.error("Error sending message:", err);
+      console.error("Błąd wysyłania wiadomości:", err);
     }
   };
 
+  // Tworzenie nowej konwersacji
   const handleNewConversation = async (receiverId, userRole) => {
     if (!user?.id) {
-      console.error("User ID is not available");
+      console.error("ID użytkownika nie jest dostępne");
       return;
     }
 
-    // Pobierz rolę aktualnego użytkownika z Clerk metadata
+    // Rola aktualnego użytkownika z Clerk metadata
     const currentUserRole = user.publicMetadata?.role || 'ADMIN';
   
     try {
-      console.log('Creating new conversation with:', { receiverId, userRole });
+      console.log('Tworzenie nowej konwersacji z:', { receiverId, userRole });
       const res = await axios.post("/api/conversations", {
         receiverId,
-        userType: currentUserRole.toUpperCase(),  // Rola z Clerk
-        receiverType: userRole.toUpperCase() // Rola wybranego użytkownika
+        userType: currentUserRole.toUpperCase(),
+        receiverType: userRole.toUpperCase()
       });
   
       if (res.data) {
@@ -242,8 +264,13 @@ export default function Messenger() {
         setCurrentChat(newConversation);
       }
     } catch (err) {
-      console.error("Error creating new conversation:", err);
+      console.error("Błąd tworzenia nowej konwersacji:", err);
     }
+  };
+
+  // Sprawdzenie czy użytkownik jest online
+  const isUserOnline = (userId) => {
+    return onlineUsers.has(userId);
   };
 
   return (
@@ -264,6 +291,7 @@ export default function Messenger() {
                   currentUser={user}
                   setCurrentChat={setCurrentChat}
                   currentChat={currentChat}
+                  isUserOnline={isUserOnline}
                 />
               ))
             ) : (

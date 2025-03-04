@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import Pusher from 'pusher';
+
 export const dynamic = 'force-dynamic';
+export const runtime = "nodejs";
+
+// Inicjalizacja Pusher tylko jeśli zmienne środowiskowe są dostępne
+const pusher = process.env.PUSHER_APP_ID && process.env.PUSHER_KEY && process.env.PUSHER_SECRET && process.env.PUSHER_CLUSTER
+  ? new Pusher({
+      appId: process.env.PUSHER_APP_ID,
+      key: process.env.PUSHER_KEY,
+      secret: process.env.PUSHER_SECRET,
+      cluster: process.env.PUSHER_CLUSTER,
+      useTLS: true,
+    })
+  : null;
+
+// GET - Pobieranie statusu użytkownika
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -80,6 +96,75 @@ export async function GET(request: Request) {
     return NextResponse.json(
       { error: "Failed to fetch user status" },
       { status: 500 }
+    );
+  }
+}
+
+// POST - Aktualizacja statusu użytkownika
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { userId, userType, isOnline } = body;
+
+    if (!userId || !userType) {
+      return NextResponse.json(
+        { error: "Missing userId or userType" },
+        { status: 400 }
+      );
+    }
+
+    const now = new Date();
+    let updatedUser = null;
+
+    try {
+      switch (userType.toUpperCase()) {
+        case 'ADMIN':
+          updatedUser = await prisma.admin.update({
+            where: { id: userId },
+            data: { isOnline, lastActive: now }
+          });
+          break;
+        case 'TEACHER':
+          updatedUser = await prisma.teacher.update({
+            where: { id: userId },
+            data: { isOnline, lastActive: now }
+          });
+          break;
+        case 'STUDENT':
+          updatedUser = await prisma.student.update({
+            where: { id: userId },
+            data: { isOnline, lastActive: now }
+          });
+          break;
+        case 'PARENT':
+          updatedUser = await prisma.parent.update({
+            where: { id: userId },
+            data: { isOnline, lastActive: now }
+          });
+          break;
+      }
+
+      // Powiadom innych o zmianie statusu przez Pusher
+      if (pusher) {
+        await pusher.trigger('presence-users', 'user-status-change', {
+          userId,
+          isOnline
+        });
+      }
+
+      return NextResponse.json({ success: true, user: updatedUser });
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      return NextResponse.json(
+        { error: "Failed to update user status" },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error('Error parsing request:', error);
+    return NextResponse.json(
+      { error: "Failed to parse request" },
+      { status: 400 }
     );
   }
 }

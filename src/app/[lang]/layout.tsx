@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Menu from "@/components/Menu";
 import Navbar from "@/components/Navbar";
-import { SocketProvider } from "@/context/SocketContext";
+import { PusherProvider } from "@/context/PusherContext";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -45,14 +45,14 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
     return <div>Loading...</div>;
   }
 
-  // Dla stron logowania i rejestracji, wyświetl tylko dzieci bez menu i bez Socket.IO
+  // Dla stron logowania i rejestracji, wyświetl tylko dzieci bez menu i bez Pusher
   if (isAuthPage) {
     return <>{children}</>;
   }
 
-  // Dla pozostałych stron, wyświetl pełny layout z menu i Socket.IO
+  // Dla pozostałych stron, wyświetl pełny layout z menu i Pusher
   return (
-    <SocketProvider>
+    <PusherProvider>
       <div className="h-screen flex">
         {/* LEFT */}
         <div className="w-[14%] md:w-[8%] lg:w-[16%] xl:w-[14%] p-4">
@@ -72,6 +72,6 @@ export default function DashboardLayout({ children, params }: DashboardLayoutPro
           {children}
         </div>
       </div>
-    </SocketProvider>
+    </PusherProvider>
   );
 }

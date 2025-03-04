@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    NEXT_PUBLIC_PUSHER_KEY: process.env.PUSHER_KEY,
+    NEXT_PUBLIC_PUSHER_CLUSTER: process.env.PUSHER_CLUSTER,
+  },
   async headers() {
     return [
       {
@@ -17,7 +21,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'marsoftNGO.pl',  // Dodaj nową domenę
+        hostname: 'platformango.eu',
         port: '',
         pathname: '/**',
       },
