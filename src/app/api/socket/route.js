@@ -5,15 +5,8 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 let users = new Map();
 
-// Konfiguracja dla Vercel
-export const config = {
-  api: {
-    bodyParser: false,
-    externalResolver: true,
-  },
-  runtime: 'nodejs',
-  maxDuration: 10
-};
+// Nowa konfiguracja dla Vercel zgodna z App Router
+export const runtime = "nodejs";
 
 export async function GET(req, res) {
   const { searchParams } = new URL(req.url);
