@@ -1,6 +1,9 @@
 {
   "version": 2,
   "regions": ["fra1"],
+  "rewrites": [
+    { "source": "/pusher/auth", "destination": "/api/pusher/auth" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -14,7 +17,7 @@
       ]
     },
     {
-      "source": "/api/pusher/auth",
+      "source": "/pusher/auth",
       "headers": [
         { "key": "Connection", "value": "keep-alive" },
         { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate" },
