@@ -1,8 +1,21 @@
 {
   "version": 2,
+  "regions": ["fra1"],
   "functions": {
     "src/app/api/socket/route.js": {
-      "maxDuration": 10
+      "maxDuration": 300
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/api/socket/(.*)",
+      "headers": [
+        { "key": "Connection", "value": "keep-alive" },
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-Requested-With, Content-Type, Accept, Authorization" }
+      ]
+    }
+  ]
 }
