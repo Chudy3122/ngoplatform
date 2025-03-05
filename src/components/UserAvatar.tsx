@@ -2,130 +2,47 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-
-interface UserData {
-  id: string;
-  username: string;
-  name: string;
-  surname?: string;
-  img?: string | null;
-  type: 'admin' | 'teacher' | 'student' | 'parent';
-}
+import { useUser } from "@clerk/nextjs";
 
 export default function UserAvatar({ userId, size = 40 }: { userId: string, size?: number }) {
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [imgSrc, setImgSrc] = useState<string>("/noAvatar.png");
+  const { user } = useUser();
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchAvatar = async () => {
       if (!userId) return;
       
-      console.log(`Attempting to fetch data for user: ${userId}`);
+      // Jeśli to jest bieżący użytkownik z Clerk, użyj bezpośrednio jego zdjęcia
+      if (user && user.id === userId && user.imageUrl) {
+        setImgSrc(user.imageUrl);
+        return;
+      }
       
       try {
-        setLoading(true);
+        const response = await fetch(`/api/userprofile?id=${encodeURIComponent(userId)}`);
         
-        // Najpierw sprawdźmy, czy endpoint testowy działa
-        try {
-          const testResponse = await fetch('/api/test');
-          if (testResponse.ok) {
-            const testData = await testResponse.json();
-            console.log('Test endpoint works:', testData);
-          } else {
-            console.error('Test endpoint failed:', await testResponse.text());
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.img) {
+            setImgSrc(data.img);
           }
-        } catch (testError) {
-          console.error('Test endpoint error:', testError);
         }
-        
-        // Spróbujmy z zakodowanym URL
-        const encodedUserId = encodeURIComponent(userId);
-        const url = `/api/user/profile/${encodedUserId}`;
-        console.log(`Fetching from URL: ${url}`);
-        
-        const response = await fetch(url);
-        
-        console.log(`Response status: ${response.status}`);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Error response text: ${errorText}`);
-          throw new Error(`Failed to fetch user data: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        console.log(`User data received:`, data);
-        setUserData(data);
-      } catch (err: any) {
-        console.error('Detailed error:', err);
-        setError(err.message || 'Failed to load user data');
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching avatar:", error);
       }
     };
 
-    if (userId) {
-      fetchUserData();
-    }
-  }, [userId]);
+    fetchAvatar();
+  }, [userId, user]);
 
-  const getDisplayName = () => {
-    if (!userData) return 'Unknown';
-    if (userData.type === 'admin') return userData.name || userData.username;
-    return userData.name && userData.surname 
-      ? `${userData.name} ${userData.surname}` 
-      : userData.username;
-  };
-
-  if (loading) {
-    return (
-      <div 
-        className="rounded-full bg-gray-200 flex items-center justify-center"
-        style={{ width: `${size}px`, height: `${size}px` }}
-      >
-        <span className="text-gray-400 text-xs">...</span>
-      </div>
-    );
-  }
-
-  if (error || !userData) {
-    return (
-      <div 
-        className="messageImg"
-        style={{ width: `${size}px`, height: `${size}px` }}
-      >
-        <img src="/noAvatar.png" alt="avatar" className="w-full h-full object-cover rounded-full" />
-      </div>
-    );
-  }
-
-  // Jeśli użytkownik ma zdjęcie profilowe
-  if (userData.img) {
-    return (
-      <div 
-        className="messageImg"
-        style={{ width: `${size}px`, height: `${size}px` }}
-      >
-        <img 
-          src={userData.img}
-          alt={`${getDisplayName()} profile`}
-          className="w-full h-full object-cover rounded-full"
-          onError={(e) => {
-            e.currentTarget.src = "/noAvatar.png";
-          }}
-        />
-      </div>
-    );
-  }
-
-  // Fallback do domyślnego avatara
   return (
-    <div 
-      className="messageImg"
-      style={{ width: `${size}px`, height: `${size}px` }}
-    >
-      <img src="/noAvatar.png" alt="avatar" className="w-full h-full object-cover rounded-full" />
+    <div className="messageImg" style={{ width: `${size}px`, height: `${size}px` }}>
+      <img
+        src={imgSrc}
+        alt="avatar"
+        className="w-full h-full object-cover rounded-full"
+        onError={() => setImgSrc("/noAvatar.png")}
+      />
     </div>
   );
 }
