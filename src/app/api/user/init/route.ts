@@ -15,12 +15,44 @@ export async function POST() {
     const userId = session.userId;
     console.log(`Inicjalizacja użytkownika o ID: ${userId}`);
     
-    // Przypisanie roli "student" w Clerk, jeśli jeszcze nie ma przypisanej roli
+    // Pobieranie danych użytkownika z Clerk
+    let userFirstName = "Default Name";
+    let userLastName = "Default Surname";
+    let userUsername = `user_${userId.slice(0, 8)}`;
+    let userEmail = null;
+    let userImageUrl = null;
+    
     try {
       console.log("Pobieranie danych użytkownika z Clerk");
       const clerk = await clerkClient();
       const user = await clerk.users.getUser(userId);
       console.log(`Pobrano dane użytkownika: ${user.id}`);
+      
+      // Pobierz URL zdjęcia profilowego z Clerk
+      userImageUrl = user.imageUrl || null;
+      
+      // Pobierz imię i nazwisko z Clerk jeśli dostępne
+      if (user.firstName) userFirstName = user.firstName;
+      if (user.lastName) userLastName = user.lastName;
+      
+      // Ustaw username na podstawie danych Clerk
+      // Priorytet: username > firstName+lastName > email > ID
+      if (user.username) {
+        userUsername = user.username;
+      } else if (user.firstName && user.lastName) {
+        userUsername = `${user.firstName.toLowerCase()}.${user.lastName.toLowerCase()}`;
+      } else if (user.emailAddresses && user.emailAddresses.length > 0) {
+        const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
+        const email = primaryEmail ? primaryEmail.emailAddress : user.emailAddresses[0].emailAddress;
+        userUsername = email.split('@')[0];
+        userEmail = email;
+      }
+      
+      // Pobierz email, jeśli nie został ustawiony wcześniej
+      if (!userEmail && user.emailAddresses && user.emailAddresses.length > 0) {
+        const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
+        userEmail = primaryEmail ? primaryEmail.emailAddress : user.emailAddresses[0].emailAddress;
+      }
       
       // Sprawdź czy użytkownik ma już przypisaną rolę
       const userRole = user.publicMetadata?.role;
@@ -55,81 +87,63 @@ export async function POST() {
       prisma.parent.findUnique({ where: { id: userId } })
     ]);
 
-    if (existingAdmin) console.log("Znaleziono istniejącego admina");
-    if (existingTeacher) console.log("Znaleziono istniejącego nauczyciela");
-    if (existingStudent) console.log("Znaleziono istniejącego studenta");
-    if (existingParent) console.log("Znaleziono istniejącego rodzica");
-
     if (existingAdmin || existingTeacher || existingStudent || existingParent) {
-      console.log("Użytkownik już istnieje w bazie danych - zwracanie odpowiedzi");
-      return NextResponse.json({ message: "User already exists", role: existingAdmin ? "admin" : existingTeacher ? "teacher" : existingStudent ? "student" : "parent" }, { status: 200 });
-    }
-
-    // Sprawdź czy istnieje rodzic z ID, które chcemy użyć
-    const parentId = `parent_${userId}`;
-    const existingParentWithId = await prisma.parent.findUnique({ where: { id: parentId } });
-    if (existingParentWithId) {
-      console.log(`Rodzic z ID ${parentId} już istnieje. Używamy istniejącego rodzica.`);
-      
-      // Sprawdź czy istnieje student z ID userId
-      const existingStudentWithId = await prisma.student.findUnique({ where: { id: userId } });
-      if (existingStudentWithId) {
-        console.log(`Student z ID ${userId} już istnieje.`);
-        return NextResponse.json({ message: "Student already exists" }, { status: 200 });
-      }
-      
-      // Stwórz tylko studenta, używając istniejącego rodzica
-      try {
-        // Najpierw znajdź lub utwórz Grade i Class
-        const grade = await prisma.grade.upsert({
-          where: { level: 1 },
-          update: {},
-          create: { level: 1 }
-        });
-        
-        const class1 = await prisma.class.upsert({
-          where: { name: '1A' },
-          update: {},
-          create: {
-            name: '1A',
-            capacity: 30,
-            gradeId: grade.id
+      // Użytkownik istnieje, ale możemy zaktualizować jego dane
+      if (existingAdmin) {
+        await prisma.admin.update({
+          where: { id: userId },
+          data: { 
+            username: userUsername,
+            name: `${userFirstName} ${userLastName}`,
+            email: userEmail,
+            img: userImageUrl
           }
         });
-        
-        // Generuj unikalny username dla studenta
-        const timestamp = Date.now().toString().slice(-6); // Użyj części timestampa
-        const uniqueUsername = `user_${userId.slice(0, 6)}_${timestamp}`;
-        
-        // Utwórz studenta z unikalnym username
-        const newStudent = await prisma.student.create({
-          data: {
-            id: userId,
-            username: uniqueUsername,
-            name: 'Default Name',
-            surname: 'Default Surname',
-            email: null,
-            address: 'Default Address',
-            sex: 'MALE',
-            birthday: new Date(),
-            parentId: existingParentWithId.id,
-            classId: class1.id,
-            gradeId: grade.id
+        console.log(`Admin zaktualizowany: ${userUsername}`);
+      } else if (existingTeacher) {
+        await prisma.teacher.update({
+          where: { id: userId },
+          data: { 
+            username: userUsername,
+            name: userFirstName,
+            surname: userLastName,
+            email: userEmail,
+            img: userImageUrl
           }
         });
-        
-        console.log(`Student utworzony pomyślnie: ${newStudent.id}`);
-        return NextResponse.json({ success: true, student: newStudent });
-      } catch (studentError) {
-        console.error("Błąd podczas tworzenia studenta:", studentError);
-        if (studentError instanceof Error) {
-          console.error('Szczegóły błędu:', studentError.message);
-        }
-        throw studentError;
+        console.log(`Nauczyciel zaktualizowany: ${userUsername}`);
+      } else if (existingStudent) {
+        await prisma.student.update({
+          where: { id: userId },
+          data: { 
+            username: userUsername,
+            name: userFirstName,
+            surname: userLastName,
+            email: userEmail,
+            img: userImageUrl
+          }
+        });
+        console.log(`Student zaktualizowany: ${userUsername}`);
+      } else if (existingParent) {
+        await prisma.parent.update({
+          where: { id: userId },
+          data: { 
+            username: userUsername,
+            name: userFirstName,
+            surname: userLastName,
+            email: userEmail
+          }
+        });
+        console.log(`Rodzic zaktualizowany: ${userUsername}`);
       }
+      
+      return NextResponse.json({ 
+        message: "User data updated", 
+        role: existingAdmin ? "admin" : existingTeacher ? "teacher" : existingStudent ? "student" : "parent" 
+      }, { status: 200 });
     }
 
-    // Stwórz podstawowe rekordy
+    // Tworzenie nowego użytkownika...
     console.log('Tworzenie początkowych rekordów dla użytkownika:', userId);
 
     // 1. Stwórz lub znajdź domyślny Grade
@@ -154,11 +168,12 @@ export async function POST() {
     });
     console.log(`Klasa utworzona/znaleziona: ${class1.id}`);
 
-    // 3. Stwórz tymczasowego rodzica z unikalnym ID i username
+    // 3. Stwórz tymczasowego rodzica z danymi z Clerk
     console.log("Tworzenie tymczasowego rodzica");
+    const parentId = `parent_${userId}`;
     const timestamp = Date.now().toString().slice(-6);
-    const parentUsername = `parent_${userId.slice(0, 6)}_${timestamp}`;
-    const parentEmail = `parent_${userId.slice(0, 6)}_${timestamp}@example.com`;
+    const parentUsername = `parent_${userUsername}`;
+    const parentEmail = userEmail ? `parent_${userEmail}` : `parent_${userId.slice(0, 6)}_${timestamp}@example.com`;
     
     // Skróć numer telefonu, aby nie przekroczył dozwolonej długości
     const phoneNumber = userId.length > 15 ? userId.slice(0, 15) : userId;
@@ -168,8 +183,8 @@ export async function POST() {
         data: {
           id: parentId,
           username: parentUsername,
-          name: 'Default Parent',
-          surname: 'Default Surname',
+          name: userFirstName,
+          surname: userLastName,
           email: parentEmail,
           phone: phoneNumber,
           address: 'Default Address'
@@ -177,19 +192,19 @@ export async function POST() {
       });
       console.log(`Rodzic utworzony: ${newParent.id}`);
       
-      // 4. Stwórz studenta z unikalnym username
+      // 4. Stwórz studenta z danymi z Clerk
       console.log("Tworzenie rekordu studenta");
       try {
-        const studentUsername = `user_${userId.slice(0, 6)}_${timestamp}`;
         const newStudent = await prisma.student.create({
           data: {
             id: userId,
-            username: studentUsername,
-            name: 'Default Name',
-            surname: 'Default Surname',
-            email: null,
+            username: userUsername,
+            name: userFirstName,
+            surname: userLastName,
+            email: userEmail,
+            img: userImageUrl,
             address: 'Default Address',
-            sex: 'MALE',
+            sex: 'MALE', // Możesz dodać to jako metadata w Clerk
             birthday: new Date(),
             parentId: newParent.id,
             classId: class1.id,
@@ -224,8 +239,8 @@ export async function POST() {
             data: {
               id: altParentId,
               username: parentUsername,
-              name: 'Default Parent',
-              surname: 'Default Surname',
+              name: userFirstName,
+              surname: userLastName,
               email: parentEmail,
               phone: phoneNumber,
               address: 'Default Address'
@@ -233,14 +248,14 @@ export async function POST() {
           });
           
           // Utwórz studenta z nowo utworzonym rodzicem
-          const studentUsername = `user_${userId.slice(0, 6)}_${timestamp}`;
           const newStudent = await prisma.student.create({
             data: {
               id: userId,
-              username: studentUsername,
-              name: 'Default Name',
-              surname: 'Default Surname',
-              email: null,
+              username: userUsername,
+              name: userFirstName,
+              surname: userLastName,
+              email: userEmail,
+              img: userImageUrl,
               address: 'Default Address',
               sex: 'MALE',
               birthday: new Date(),
@@ -273,14 +288,18 @@ export async function POST() {
       console.error('Kod błędu Prisma:', error.code);
       
       if (error.code === 'P2002') {
-        // Zwróć konkretniejszy komunikat o naruszeniu unikalności
         const target = error.meta?.target as string[] || [];
-        return NextResponse.json({ 
-          error: "Unique constraint violation", 
-          field: target.join(', ') || 'unknown field' 
-        }, { status: 409 });
-      } else if (error.code === 'P2003') {
-        return NextResponse.json({ error: "Foreign key constraint failed" }, { status: 400 });
+        const field = target.join(', ') || 'unknown field';
+        console.error(`Naruszenie ograniczenia unikalności w polu: ${field}`);
+        
+        // Spróbuj obejść problem unikalności dodając timestamp
+        if (field.includes('username') || field.includes('email')) {
+          return NextResponse.json({ 
+            error: "Unique constraint violation", 
+            field,
+            message: "Spróbuj użyć innej nazwy użytkownika lub adresu email"
+          }, { status: 409 });
+        }
       }
     }
     

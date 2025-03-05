@@ -12,11 +12,12 @@ model Admin {
   username      String         @unique
   name          String?
   email         String?        @unique
-  files         LibraryFile[] // Pliki posiadane przez admina
-  sharedToMe    FileShare[]    @relation("SharedToAdmin") // Pliki udostępnione adminowi
-  sharedByMe    FileShare[]    @relation("SharedByAdmin") // Pliki udostępnione przez admina
-  createdEvents Event[]        @relation("AdminEvents") // Dodane
-  eventComments EventComment[] @relation("AdminComments") // Dodane
+  img           String?        // Dodajemy to pole
+  files         LibraryFile[] 
+  sharedToMe    FileShare[]    @relation("SharedToAdmin") 
+  sharedByMe    FileShare[]    @relation("SharedByAdmin") 
+  createdEvents Event[]        @relation("AdminEvents")
+  eventComments EventComment[] @relation("AdminComments")
   isOnline     Boolean   @default(false)
   lastActive   DateTime  @default(now())
 }
