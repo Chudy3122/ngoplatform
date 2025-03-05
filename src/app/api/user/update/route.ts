@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function POST() {
   try {
@@ -19,22 +20,22 @@ export async function POST() {
     // Przygotowanie danych
     const userFirstName = user.firstName || "Default";
     const userLastName = user.lastName || "User";
-    let userUsername = user.username;
     let userEmail = null;
-    let userImageUrl = user.imageUrl || null; // Pobranie URL zdjęcia profilowego
+    let userImageUrl = user.imageUrl || null;
     
-    // Ustaw username na podstawie danych Clerk
-    if (!userUsername) {
-      if (user.firstName && user.lastName) {
-        userUsername = `${user.firstName.toLowerCase()}.${user.lastName.toLowerCase()}`;
-      } else if (user.emailAddresses && user.emailAddresses.length > 0) {
-        const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
-        const email = primaryEmail ? primaryEmail.emailAddress : user.emailAddresses[0].emailAddress;
-        userUsername = email.split('@')[0];
-        userEmail = email;
-      } else {
-        userUsername = `user_${userId.slice(0, 8)}`;
-      }
+    // Generowanie poprawnej nazwy użytkownika
+    let userUsername = "";
+    if (user.username) {
+      userUsername = user.username;
+    } else if (user.firstName && user.lastName) {
+      userUsername = `${user.firstName.toLowerCase()}.${user.lastName.toLowerCase()}`;
+    } else if (user.emailAddresses && user.emailAddresses.length > 0) {
+      const primaryEmail = user.emailAddresses.find(email => email.id === user.primaryEmailAddressId);
+      const email = primaryEmail ? primaryEmail.emailAddress : user.emailAddresses[0].emailAddress;
+      userUsername = email.split('@')[0];
+      userEmail = email;
+    } else {
+      userUsername = `user_${userId.slice(0, 8)}`;
     }
     
     // Pobierz email, jeśli nie został ustawiony wcześniej
@@ -56,10 +57,10 @@ export async function POST() {
       result = await prisma.admin.update({
         where: { id: userId },
         data: { 
-          username: userUsername,
+          username: userUsername, // Zawsze aktualizujemy username
           name: `${userFirstName} ${userLastName}`,
           email: userEmail,
-          img: userImageUrl // Dodajemy zdjęcie dla admina
+          img: userImageUrl
         }
       });
       return NextResponse.json({ success: true, role: "admin", user: result });
@@ -67,11 +68,11 @@ export async function POST() {
       result = await prisma.teacher.update({
         where: { id: userId },
         data: { 
-          username: userUsername,
+          username: userUsername, // Zawsze aktualizujemy username
           name: userFirstName,
           surname: userLastName,
           email: userEmail,
-          img: userImageUrl // Zdjęcie dla nauczyciela
+          img: userImageUrl
         }
       });
       return NextResponse.json({ success: true, role: "teacher", user: result });
@@ -79,23 +80,22 @@ export async function POST() {
       result = await prisma.student.update({
         where: { id: userId },
         data: { 
-          username: userUsername,
+          username: userUsername, // Zawsze aktualizujemy username
           name: userFirstName,
           surname: userLastName,
           email: userEmail,
-          img: userImageUrl // Zdjęcie dla studenta
+          img: userImageUrl
         }
       });
       return NextResponse.json({ success: true, role: "student", user: result });
     } else if (parent) {
-      // Uwaga: model Parent w schemacie nie ma pola img
       result = await prisma.parent.update({
         where: { id: userId },
         data: { 
-          username: userUsername,
+          username: userUsername, // Zawsze aktualizujemy username
           name: userFirstName,
           surname: userLastName,
-          email: userEmail 
+          email: userEmail
         }
       });
       return NextResponse.json({ success: true, role: "parent", user: result });
@@ -104,6 +104,22 @@ export async function POST() {
     }
   } catch (error) {
     console.error("Error updating user:", error);
+    
+    // Poprawka: sprawdzenie typu error przed dostępem do jego właściwości
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002' && error.meta?.target) {
+        const target = error.meta.target;
+        if (Array.isArray(target) && target.includes('username')) {
+          const timestamp = Date.now().toString().slice(-6);
+          return NextResponse.json({ 
+            error: "Username already taken, please try again",
+            reason: "unique_constraint",
+            field: "username"
+          }, { status: 409 });
+        }
+      }
+    }
+    
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
