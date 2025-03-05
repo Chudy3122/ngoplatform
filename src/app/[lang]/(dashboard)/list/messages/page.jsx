@@ -10,6 +10,7 @@ import { useParams } from "next/navigation";
 import axios from "axios";
 import { useUser } from "@clerk/nextjs";
 import { usePusher } from "@/context/PusherContext";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function Messenger() {
   const [conversations, setConversations] = useState([]);

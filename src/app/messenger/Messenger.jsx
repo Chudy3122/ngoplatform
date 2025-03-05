@@ -10,6 +10,7 @@ import { useParams } from "next/navigation";
 import axios from "axios";
 import { useUser } from "@clerk/nextjs";
 import { usePusher } from "@/context/PusherContext";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function Messenger() {
   const [conversations, setConversations] = useState([]);
@@ -196,14 +197,39 @@ export default function Messenger() {
             <>
               <div className="chatBoxTop">
                 <div className="chatBoxHeader">
-                  <img
-                    src="/noAvatar.png"
-                    alt="avatar"
-                    className="currentChatAvatar"
-                  />
-                  <span className="currentChatName">
-                    {currentChat.userData?.username || currentChat.userData?.name || t.messages?.chat || "Chat"}
-                  </span>
+                  {currentChat && currentChat.members && (
+                    <>
+                      {currentChat.members.find(m => 
+                        typeof m === 'object' 
+                          ? m.memberId !== user?.id 
+                          : m !== user?.id
+                      ) ? (
+                        <UserAvatar 
+                          userId={typeof currentChat.members.find(m => 
+                            typeof m === 'object' 
+                              ? m.memberId !== user?.id 
+                              : m !== user?.id
+                          ) === 'object' 
+                            ? currentChat.members.find(m => m.memberId !== user?.id).memberId 
+                            : currentChat.members.find(m => m !== user?.id)} 
+                          size={40} 
+                        />
+                      ) : (
+                        <img
+                          src="/noAvatar.png"
+                          alt="avatar"
+                          className="currentChatAvatar"
+                        />
+                      )}
+                      <span className="currentChatName">
+                        {currentChat.userData?.name ? 
+                          (currentChat.userData?.surname ? 
+                            `${currentChat.userData.name} ${currentChat.userData.surname}` : 
+                            currentChat.userData.name) : 
+                          currentChat.userData?.username || t.messages?.chat || "Chat"}
+                      </span>
+                    </>
+                  )}
                 </div>
                 <div className="messagesContainer">
                   {Array.isArray(messages) && messages.length > 0 ? (
