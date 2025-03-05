@@ -6,10 +6,28 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  console.log(`API called with user ID: ${params.id}`);
+  
   try {
     const userId = params.id;
     
+    // Dodajmy proste testowe sprawdzenie dla debugowania
+    const isTest = userId === 'test';
+    if (isTest) {
+      console.log('Returning test data');
+      return NextResponse.json({
+        id: 'test',
+        username: 'testuser',
+        name: 'Test User',
+        type: 'admin',
+        email: 'test@example.com'
+      });
+    }
+    
+    console.log(`Looking up user in database: ${userId}`);
+    
     // Sprawdź, jaki typ użytkownika to jest
+    // Reszta kodu pozostaje bez zmian...
     const [admin, teacher, student, parent] = await Promise.all([
       prisma.admin.findUnique({ where: { id: userId } }),
       prisma.teacher.findUnique({ where: { id: userId } }),
@@ -24,15 +42,19 @@ export async function GET(
     if (admin) {
       userData = admin;
       userType = 'admin';
+      console.log('Found admin user');
     } else if (teacher) {
       userData = teacher;
       userType = 'teacher';
+      console.log('Found teacher user');
     } else if (student) {
       userData = student;
       userType = 'student';
+      console.log('Found student user');
     } else if (parent) {
       userData = parent;
       userType = 'parent';
+      console.log('Found parent user');
     } else {
       // Sprawdź, czy ID może być ID rodzica (parent_)
       if (userId.startsWith('parent_')) {
@@ -41,11 +63,13 @@ export async function GET(
         if (parent) {
           userData = parent;
           userType = 'parent';
+          console.log('Found parent (from parent_ prefix)');
         }
       }
     }
     
     if (!userData) {
+      console.log(`User not found: ${userId}`);
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
     
@@ -71,9 +95,10 @@ export async function GET(
       response.img = userData.img;
     }
     
+    console.log(`Returning user data: ${JSON.stringify(response)}`);
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Error fetching user profile:", error);
+    console.error("Full error details:", error);
     return NextResponse.json({ error: "Failed to fetch user profile" }, { status: 500 });
   }
 }

@@ -21,19 +21,45 @@ export default function UserAvatar({ userId, size = 40 }: { userId: string, size
     const fetchUserData = async () => {
       if (!userId) return;
       
+      console.log(`Attempting to fetch data for user: ${userId}`);
+      
       try {
         setLoading(true);
-        const response = await fetch(`/api/user/profile/${userId}`);
+        
+        // Najpierw sprawdźmy, czy endpoint testowy działa
+        try {
+          const testResponse = await fetch('/api/test');
+          if (testResponse.ok) {
+            const testData = await testResponse.json();
+            console.log('Test endpoint works:', testData);
+          } else {
+            console.error('Test endpoint failed:', await testResponse.text());
+          }
+        } catch (testError) {
+          console.error('Test endpoint error:', testError);
+        }
+        
+        // Spróbujmy z zakodowanym URL
+        const encodedUserId = encodeURIComponent(userId);
+        const url = `/api/user/profile/${encodedUserId}`;
+        console.log(`Fetching from URL: ${url}`);
+        
+        const response = await fetch(url);
+        
+        console.log(`Response status: ${response.status}`);
         
         if (!response.ok) {
-          throw new Error('Failed to fetch user data');
+          const errorText = await response.text();
+          console.error(`Error response text: ${errorText}`);
+          throw new Error(`Failed to fetch user data: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
+        console.log(`User data received:`, data);
         setUserData(data);
-      } catch (err) {
-        console.error('Error fetching user avatar:', err);
-        setError('Failed to load user data');
+      } catch (err: any) {
+        console.error('Detailed error:', err);
+        setError(err.message || 'Failed to load user data');
       } finally {
         setLoading(false);
       }
