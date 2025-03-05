@@ -1,6 +1,8 @@
+// src/components/message/page.jsx
 "use client";
 import { format } from "timeago.js";
 import "./page.css";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function Message({ message, own }) {
   if (!message) return null;
@@ -13,11 +15,7 @@ export default function Message({ message, own }) {
     <div className={own ? "message own" : "message"}>
       <div className="messageTop">
         {!own && (
-          <img
-            className="messageImg"
-            src="/noAvatar.png"
-            alt="avatar"
-          />
+          <UserAvatar userId={message.senderId} size={40} />
         )}
         <div className="messageContent">
           <p className="messageText">{content}</p>
@@ -33,11 +31,7 @@ export default function Message({ message, own }) {
           )}
         </div>
         {own && (
-          <img
-            className="messageImg"
-            src="/noAvatar.png"
-            alt="avatar"
-          />
+          <UserAvatar userId={message.senderId} size={40} />
         )}
       </div>
     </div>

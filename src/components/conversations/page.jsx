@@ -5,15 +5,17 @@ import { useParams } from "next/navigation";
 import axios from "axios";
 import "./page.css";
 import { useTranslations } from "@/hooks/useTranslations";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function Conversation({ 
   conversation, 
   currentUser, 
   setCurrentChat, 
   currentChat,
-  isUserOnline // Nowa props z funkcją sprawdzającą status
+  isUserOnline
 }) {
   const [user, setUser] = useState(null);
+  const [userId, setUserId] = useState(null);
   const params = useParams();
   const lang = params?.lang || 'pl';
   const t = useTranslations();
@@ -33,12 +35,15 @@ export default function Conversation({
           return;
         }
   
-        const userId = typeof otherMember === 'object' ? otherMember.memberId : otherMember;
+        const memberId = typeof otherMember === 'object' ? otherMember.memberId : otherMember;
         const userType = typeof otherMember === 'object' ? otherMember.memberType : 'STUDENT';
   
+        // Zapisz ID użytkownika, aby użyć go w UserAvatar
+        setUserId(memberId);
+        
         const res = await axios.get('/api/users/status', {
           params: {
-            userId: userId,
+            userId: memberId,
             userType: userType
           }
         });
@@ -69,13 +74,8 @@ export default function Conversation({
     if (!user) return false;
     
     // Jeśli przekazano funkcję isUserOnline, używamy jej
-    if (isUserOnline && typeof isUserOnline === 'function') {
-      const userId = typeof user === 'object' && user.id ? user.id : 
-                     typeof user === 'string' ? user : null;
-      
-      if (userId) {
-        return isUserOnline(userId);
-      }
+    if (isUserOnline && typeof isUserOnline === 'function' && userId) {
+      return isUserOnline(userId);
     }
     
     // Fallback do statusu z API
@@ -90,11 +90,15 @@ export default function Conversation({
       className={`conversation-item ${currentChat?.id === conversation.id ? 'active' : ''}`}
       onClick={() => setCurrentChat({...conversation, userData: user})}
     >
-      <img
-        className="user-avatar"
-        src="/noAvatar.png"
-        alt={t.common?.avatar || "avatar"}
-      />
+      {userId ? (
+        <UserAvatar userId={userId} size={40} />
+      ) : (
+        <img
+          className="user-avatar"
+          src="/noAvatar.png"
+          alt={t.common?.avatar || "avatar"}
+        />
+      )}
       <div className="conversation-info">
         <span className="username">{getDisplayName()}</span>
         <div className="status-wrapper">
