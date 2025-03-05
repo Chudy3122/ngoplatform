@@ -8,8 +8,8 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations } from "@/hooks/useTranslations";
 import { useParams } from "next/navigation";
 import axios from "axios";
-import Pusher from 'pusher-js';
-import { useUser } from "@clerk/clerk-react";
+import { useUser } from "@clerk/nextjs";
+import { usePusher } from "@/context/PusherContext";
 
 export default function Messenger() {
   const [conversations, setConversations] = useState([]);
@@ -18,107 +18,14 @@ export default function Messenger() {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [arrivalMessage, setArrivalMessage] = useState(null);
-  const [onlineUsers, setOnlineUsers] = useState(new Set());
   const { user } = useUser();
+  const { isUserOnline, sendMessage } = usePusher();
   const scrollRef = useRef();
-  const pusherRef = useRef();
   const t = useTranslations();
   const params = useParams();
   const lang = params?.lang || 'pl';
 
-  // Inicjalizacja Pusher
-  useEffect(() => {
-    if (!pusherRef.current && user?.id) {
-      // Inicjalizacja Pusher
-      pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY, {
-        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
-        encrypted: true
-      });
-
-      console.log("Inicjalizacja Pusher z kluczem:", process.env.NEXT_PUBLIC_PUSHER_KEY);
-
-      // Kanał dla wszystkich użytkowników (status online/offline)
-      const channelName = 'presence-users';
-      console.log("Subskrypcja kanału:", channelName);
-      
-      const presenceChannel = pusherRef.current.subscribe(channelName);
-      
-      presenceChannel.bind('user-status-change', (data) => {
-        console.log("Zmiana statusu użytkownika:", data);
-        if (data.isOnline) {
-          setOnlineUsers(prev => {
-            const newSet = new Set(prev);
-            newSet.add(data.userId);
-            return newSet;
-          });
-        } else {
-          setOnlineUsers(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(data.userId);
-            return newSet;
-          });
-        }
-      });
-
-      // Aktualizacja statusu użytkownika
-      const updateUserStatus = async () => {
-        try {
-          const userType = user.publicMetadata?.role || 'STUDENT';
-          await axios.post('/api/users/status', {
-            userId: user.id,
-            userType,
-            isOnline: true
-          });
-          console.log("Status użytkownika zaktualizowany na online");
-        } catch (err) {
-          console.error("Błąd aktualizacji statusu:", err);
-        }
-      };
-
-      updateUserStatus();
-
-      // Obsługa wiadomości prywatnych
-      const privateChannelName = `private-user-${user.id}`;
-      console.log("Subskrypcja kanału prywatnego:", privateChannelName);
-      
-      const privateChannel = pusherRef.current.subscribe(privateChannelName);
-      
-      privateChannel.bind('new-message', (data) => {
-        console.log("Nowa wiadomość:", data);
-        setArrivalMessage({
-          sender: data.senderId,
-          content: data.text,
-          createdAt: new Date()
-        });
-      });
-
-      // Obsługa błędów Pusher
-      pusherRef.current.connection.bind('error', (err) => {
-        console.error("Błąd połączenia Pusher:", err);
-      });
-
-      // Czyszczenie przy odmontowaniu komponentu
-      return () => {
-        if (pusherRef.current) {
-          console.log("Odłączanie Pusher...");
-          pusherRef.current.unsubscribe('presence-users');
-          pusherRef.current.unsubscribe(`private-user-${user.id}`);
-          pusherRef.current.disconnect();
-          pusherRef.current = null;
-          
-          // Aktualizacja statusu offline
-          const userType = user.publicMetadata?.role || 'STUDENT';
-          axios.post('/api/users/status', {
-            userId: user.id,
-            userType,
-            isOnline: false
-          }).catch(err => console.error("Błąd aktualizacji statusu offline:", err));
-        }
-      };
-    }
-  }, [user]);
-
-  // Pobranie konwersacji
+  // Pobieranie konwersacji
   const fetchConversations = async () => {
     if (!user?.id) return;
 
@@ -142,6 +49,7 @@ export default function Messenger() {
     }
   };
 
+  // Pobieranie konwersacji przy montowaniu komponentu
   useEffect(() => {
     fetchConversations();
   }, [user]);
@@ -161,7 +69,9 @@ export default function Messenger() {
       if (!currentChat?._id) return;
   
       try {
+        console.log("Pobieranie wiadomości dla konwersacji:", currentChat._id);
         const res = await axios.get(`/api/messages?conversationId=${currentChat._id}`);
+        console.log("Pobrane wiadomości:", res.data);
         setMessages(res.data);
       } catch (err) {
         console.error("Błąd pobierania wiadomości:", err);
@@ -174,7 +84,7 @@ export default function Messenger() {
     }
   }, [currentChat]);
 
-  // Automatyczne przewijanie do najnowszej wiadomości
+  // Przewijanie do najnowszej wiadomości
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -187,45 +97,29 @@ export default function Messenger() {
       return;
     }
   
-    // Dane wiadomości
-    const messageData = {
-      content: newMessage,
-      conversationId: currentChat._id, // lub currentChat.id
-    };
-  
     try {
-      // Zapisanie wiadomości przez API
-      const res = await axios.post("/api/messages", messageData);
-      console.log("Odpowiedź po wysłaniu wiadomości:", res.data);
-  
-      // Aktualizacja interfejsu
-      setMessages(prev => [...prev, res.data]);
-      setNewMessage("");
-  
-      // Znalezienie odbiorcy
+      // Znajdź odbiorcę wiadomości
       const receiverMember = currentChat.members.find(m => 
         typeof m === 'object' ? m.memberId !== user.id : m !== user.id
       );
       
-      if (receiverMember) {
-        const receiverId = typeof receiverMember === 'object' ? 
-          receiverMember.memberId : receiverMember;
-          
-        // Wysłanie powiadomienia przez Pusher
-        await axios.post('/api/pusher', {
-          channel: `private-user-${receiverId}`,
-          event: 'new-message',
-          data: {
-            senderId: user.id,
-            text: newMessage,
-            conversationId: currentChat._id
-          }
-        });
-        
-        console.log("Powiadomienie o wiadomości wysłane przez Pusher");
-      } else {
+      if (!receiverMember) {
         console.warn("Nie znaleziono odbiorcy w konwersacji");
+        return;
       }
+      
+      const receiverId = typeof receiverMember === 'object' ? 
+        receiverMember.memberId : receiverMember;
+      
+      // Wysyłanie wiadomości poprzez PusherContext
+      await sendMessage(receiverId, newMessage, currentChat._id);
+      
+      // Pobierz zaktualizowane wiadomości
+      const res = await axios.get(`/api/messages?conversationId=${currentChat._id}`);
+      setMessages(res.data);
+      
+      // Wyczyść pole wiadomości
+      setNewMessage("");
     } catch (err) {
       console.error("Błąd wysyłania wiadomości:", err);
     }
@@ -238,7 +132,7 @@ export default function Messenger() {
       return;
     }
 
-    // Rola aktualnego użytkownika z Clerk metadata
+    // Pobierz rolę aktualnego użytkownika z Clerk metadata
     const currentUserRole = user.publicMetadata?.role || 'ADMIN';
   
     try {
@@ -266,11 +160,6 @@ export default function Messenger() {
     } catch (err) {
       console.error("Błąd tworzenia nowej konwersacji:", err);
     }
-  };
-
-  // Sprawdzenie czy użytkownik jest online
-  const isUserOnline = (userId) => {
-    return onlineUsers.has(userId);
   };
 
   return (
@@ -318,13 +207,34 @@ export default function Messenger() {
                 </div>
                 <div className="messagesContainer">
                   {Array.isArray(messages) && messages.length > 0 ? (
-                    messages.map((m) => (
-                      <div key={m._id || m.id || Math.random().toString(36).substr(2, 9)} ref={scrollRef}>
-                        <Message message={m} own={m.sender === user?.id} />
-                      </div>
-                    ))
+                    messages.map((message, index) => {
+                      // Sprawdzanie czy wiadomość jest od tego samego nadawcy co poprzednia
+                      const isPreviousSameSender = index > 0 && 
+                        messages[index - 1].senderId === message.senderId;
+                      
+                      // Dodajemy klasę 'consecutive' jeśli to kolejna wiadomość od tego samego nadawcy
+                      const consecutiveClass = isPreviousSameSender ? 'consecutive' : '';
+                      
+                      // Sprawdzamy czy wiadomość jest własna
+                      const isOwnMessage = message.senderId === user?.id;
+                      
+                      return (
+                        <div 
+                          key={message._id || message.id || Math.random().toString(36).substr(2, 9)} 
+                          className={consecutiveClass}
+                          ref={index === messages.length - 1 ? scrollRef : null}
+                        >
+                          <Message 
+                            message={message} 
+                            own={isOwnMessage} 
+                          />
+                        </div>
+                      );
+                    })
                   ) : (
-                    <div className="no-messages">{t.messages?.startConversation || "Start a conversation..."}</div>
+                    <div className="no-messages">
+                      {t.messages?.startConversation || "Start a conversation..."}
+                    </div>
                   )}
                 </div>
               </div>
