@@ -104,6 +104,7 @@ export async function POST() {
     return NextResponse.json({ success: true, student: newStudent });
   } catch (error) {
     console.error('Error initializing user:', error);
+    // Poprawka dla błędu TypeScript - error jest typu unknown
     return NextResponse.json({ error: "Failed to initialize user" }, { status: 500 });
   }
 }
