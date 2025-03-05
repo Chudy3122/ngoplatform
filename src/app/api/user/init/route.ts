@@ -41,14 +41,12 @@ export async function POST() {
       }
     } catch (clerkError) {
       console.error('Błąd podczas aktualizacji metadanych Clerk:', clerkError);
-      // Nie przerywamy wykonania, ale logujemy błąd
       if (clerkError instanceof Error) {
         console.error('Szczegóły błędu Clerk:', clerkError.message);
-        console.error('Stack błędu Clerk:', clerkError.stack);
       }
     }
     
-    // Sprawdź czy użytkownik już istnieje
+    // Sprawdź czy użytkownik już istnieje w jednej z ról
     console.log("Sprawdzanie czy użytkownik już istnieje w bazie danych");
     const [existingAdmin, existingTeacher, existingStudent, existingParent] = await Promise.all([
       prisma.admin.findUnique({ where: { id: userId } }),
@@ -64,7 +62,71 @@ export async function POST() {
 
     if (existingAdmin || existingTeacher || existingStudent || existingParent) {
       console.log("Użytkownik już istnieje w bazie danych - zwracanie odpowiedzi");
-      return NextResponse.json({ message: "User already exists" }, { status: 200 });
+      return NextResponse.json({ message: "User already exists", role: existingAdmin ? "admin" : existingTeacher ? "teacher" : existingStudent ? "student" : "parent" }, { status: 200 });
+    }
+
+    // Sprawdź czy istnieje rodzic z ID, które chcemy użyć
+    const parentId = `parent_${userId}`;
+    const existingParentWithId = await prisma.parent.findUnique({ where: { id: parentId } });
+    if (existingParentWithId) {
+      console.log(`Rodzic z ID ${parentId} już istnieje. Używamy istniejącego rodzica.`);
+      
+      // Sprawdź czy istnieje student z ID userId
+      const existingStudentWithId = await prisma.student.findUnique({ where: { id: userId } });
+      if (existingStudentWithId) {
+        console.log(`Student z ID ${userId} już istnieje.`);
+        return NextResponse.json({ message: "Student already exists" }, { status: 200 });
+      }
+      
+      // Stwórz tylko studenta, używając istniejącego rodzica
+      try {
+        // Najpierw znajdź lub utwórz Grade i Class
+        const grade = await prisma.grade.upsert({
+          where: { level: 1 },
+          update: {},
+          create: { level: 1 }
+        });
+        
+        const class1 = await prisma.class.upsert({
+          where: { name: '1A' },
+          update: {},
+          create: {
+            name: '1A',
+            capacity: 30,
+            gradeId: grade.id
+          }
+        });
+        
+        // Generuj unikalny username dla studenta
+        const timestamp = Date.now().toString().slice(-6); // Użyj części timestampa
+        const uniqueUsername = `user_${userId.slice(0, 6)}_${timestamp}`;
+        
+        // Utwórz studenta z unikalnym username
+        const newStudent = await prisma.student.create({
+          data: {
+            id: userId,
+            username: uniqueUsername,
+            name: 'Default Name',
+            surname: 'Default Surname',
+            email: null,
+            address: 'Default Address',
+            sex: 'MALE',
+            birthday: new Date(),
+            parentId: existingParentWithId.id,
+            classId: class1.id,
+            gradeId: grade.id
+          }
+        });
+        
+        console.log(`Student utworzony pomyślnie: ${newStudent.id}`);
+        return NextResponse.json({ success: true, student: newStudent });
+      } catch (studentError) {
+        console.error("Błąd podczas tworzenia studenta:", studentError);
+        if (studentError instanceof Error) {
+          console.error('Szczegóły błędu:', studentError.message);
+        }
+        throw studentError;
+      }
     }
 
     // Stwórz podstawowe rekordy
@@ -92,14 +154,14 @@ export async function POST() {
     });
     console.log(`Klasa utworzona/znaleziona: ${class1.id}`);
 
-    // 3. Stwórz tymczasowego rodzica
+    // 3. Stwórz tymczasowego rodzica z unikalnym ID i username
     console.log("Tworzenie tymczasowego rodzica");
-    const parentId = `parent_${userId}`;
-    let parentUsername = `parent_${userId.slice(0, 8)}`;
-    let parentEmail = `parent_${userId.slice(0, 8)}@example.com`;
+    const timestamp = Date.now().toString().slice(-6);
+    const parentUsername = `parent_${userId.slice(0, 6)}_${timestamp}`;
+    const parentEmail = `parent_${userId.slice(0, 6)}_${timestamp}@example.com`;
     
-    // Sprawdź czy długość telefonu nie przekracza limitu
-    let phoneNumber = userId.length > 15 ? userId.slice(0, 15) : userId;
+    // Skróć numer telefonu, aby nie przekroczył dozwolonej długości
+    const phoneNumber = userId.length > 15 ? userId.slice(0, 15) : userId;
     
     try {
       const newParent = await prisma.parent.create({
@@ -115,13 +177,14 @@ export async function POST() {
       });
       console.log(`Rodzic utworzony: ${newParent.id}`);
       
-      // 4. Stwórz studenta
+      // 4. Stwórz studenta z unikalnym username
       console.log("Tworzenie rekordu studenta");
       try {
+        const studentUsername = `user_${userId.slice(0, 6)}_${timestamp}`;
         const newStudent = await prisma.student.create({
           data: {
             id: userId,
-            username: `user_${userId.slice(0, 8)}`,
+            username: studentUsername,
             name: 'Default Name',
             surname: 'Default Surname',
             email: null,
@@ -147,30 +210,75 @@ export async function POST() {
           console.error("Nie można usunąć rodzica:", cleanupError);
         }
         
-        throw studentError; // Przekazanie błędu do głównego bloku catch
+        throw studentError;
       }
     } catch (parentError) {
       console.error("Błąd podczas tworzenia rodzica:", parentError);
-      throw parentError; // Przekazanie błędu do głównego bloku catch
+      if (parentError instanceof Prisma.PrismaClientKnownRequestError && parentError.code === 'P2002') {
+        // Spróbuj użyć alternatywnego ID dla rodzica
+        const altParentId = `parent_${userId}_${timestamp}`;
+        console.log(`Próba utworzenia rodzica z alternatywnym ID: ${altParentId}`);
+        
+        try {
+          const newParent = await prisma.parent.create({
+            data: {
+              id: altParentId,
+              username: parentUsername,
+              name: 'Default Parent',
+              surname: 'Default Surname',
+              email: parentEmail,
+              phone: phoneNumber,
+              address: 'Default Address'
+            }
+          });
+          
+          // Utwórz studenta z nowo utworzonym rodzicem
+          const studentUsername = `user_${userId.slice(0, 6)}_${timestamp}`;
+          const newStudent = await prisma.student.create({
+            data: {
+              id: userId,
+              username: studentUsername,
+              name: 'Default Name',
+              surname: 'Default Surname',
+              email: null,
+              address: 'Default Address',
+              sex: 'MALE',
+              birthday: new Date(),
+              parentId: newParent.id,
+              classId: class1.id,
+              gradeId: grade.id
+            }
+          });
+          
+          console.log(`Student utworzony pomyślnie z alternatywnym rodzicem: ${newStudent.id}`);
+          return NextResponse.json({ success: true, student: newStudent });
+        } catch (altError) {
+          console.error("Błąd podczas tworzenia z alternatywnym ID:", altError);
+          throw altError;
+        }
+      } else {
+        throw parentError;
+      }
     }
   } catch (error) {
     console.error('Błąd podczas inicjalizacji użytkownika:', error);
     
-    // Szczegółowe logowanie błędu
     if (error instanceof Error) {
       console.error('Wiadomość błędu:', error.message);
-      console.error('Stack błędu:', error.stack);
     } else {
       console.error('Nieznany typ błędu:', typeof error);
     }
     
-    // Sprawdź czy błąd jest związany z bazą danych Prisma
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       console.error('Kod błędu Prisma:', error.code);
       
-      // Obsługa typowych błędów Prisma
       if (error.code === 'P2002') {
-        return NextResponse.json({ error: "Unique constraint violation" }, { status: 409 });
+        // Zwróć konkretniejszy komunikat o naruszeniu unikalności
+        const target = error.meta?.target as string[] || [];
+        return NextResponse.json({ 
+          error: "Unique constraint violation", 
+          field: target.join(', ') || 'unknown field' 
+        }, { status: 409 });
       } else if (error.code === 'P2003') {
         return NextResponse.json({ error: "Foreign key constraint failed" }, { status: 400 });
       }
