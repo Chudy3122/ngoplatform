@@ -235,19 +235,38 @@ export default function EventList({ limit, compact = false }: EventListProps) {
     }
   
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
-        method: 'DELETE',
+      // Używamy nowego endpointu z metodą POST zamiast DELETE
+      const response = await fetch('/api/events/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ eventId })
       });
   
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete event');
+      // Pobierz tekst odpowiedzi
+      const text = await response.text();
+      
+      // Spróbuj sparsować jako JSON, jeśli to możliwe
+      let data;
+      try {
+        if (text) {
+          data = JSON.parse(text);
+        }
+      } catch (e) {
+        console.warn('Invalid JSON in response:', text);
       }
   
+      if (!response.ok) {
+        throw new Error(data?.error || `Failed to delete event (${response.status})`);
+      }
+  
+      // Odśwież listę wydarzeń
       await fetchEvents();
       
     } catch (error) {
       console.error('Error deleting event:', error);
+      // Możesz dodać powiadomienie o błędzie tutaj
     }
   };
 
