@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
 import { pl as plLocale, enUS } from 'date-fns/locale';
 import { EventItem } from '@/components/events/EventItem';
+import UserAvatar from '@/components/UserAvatar';
 
 const DEFAULT_AVATAR = "/noAvatar.png";
 
@@ -150,6 +151,14 @@ export default function EventList({ limit, compact = false }: EventListProps) {
     return author.username;
   };
 
+  const getAuthorId = (event: Event) => {
+    return event.authorStudentId || event.authorTeacherId || event.authorAdminId || event.authorParentId || '';
+  };
+
+  const getParticipantId = (participant: Participant) => {
+    return participant.userId;
+  };
+
   const handleDeleteEvent = async (eventId: number) => {
     if (!confirm(t.events.delete.confirm)) {
       return;
@@ -291,10 +300,10 @@ export default function EventList({ limit, compact = false }: EventListProps) {
               <div className="flex flex-col lg:flex-row justify-between items-start mb-4 gap-4">
                 <div className="flex items-start gap-4 w-full lg:w-auto">
                   <div className="flex-shrink-0">
-                    <img
-                      src={event.authorStudent?.img || event.authorTeacher?.img || event.authorAdmin?.img || event.authorParent?.img || DEFAULT_AVATAR}
-                      alt={t.events.createdBy}
-                      className="w-12 h-12 rounded-full border-2 border-gray-200"
+                    {/* Używamy UserAvatar zamiast bezpośredniego tagu <img> */}
+                    <UserAvatar 
+                      userId={getAuthorId(event)} 
+                      size={48} 
                     />
                   </div>
                   <div className="flex-grow">
@@ -366,7 +375,8 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                 </div>
               </div>
   
-              <div className="bg-white p-4 rounded-lg shadow-sm mt-4">
+               {/* Opis wydarzenia bez zmian */}
+               <div className="bg-white p-4 rounded-lg shadow-sm mt-4">
                 <p className="text-gray-700">{event.description}</p>
                 <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-full">
@@ -382,6 +392,7 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                 </div>
               </div>
   
+              {/* Lista uczestników ze zaktualizowanymi avatarami */}
               {event.participants.length > 0 && (
                 <div className="mt-4 space-y-4 bg-white p-4 rounded-lg shadow-sm">
                   {event.participants.filter(p => p.status === 'GOING').length > 0 && (
@@ -399,11 +410,13 @@ export default function EventList({ limit, compact = false }: EventListProps) {
   
                             return (
                               <div key={participant.id} className="flex items-center bg-green-100 rounded-full px-3 py-1">
-                                <img
-                                  src={userData?.img || DEFAULT_AVATAR}
-                                  alt={`${getUserDisplayName(userData)}'s avatar`}
-                                  className="w-6 h-6 rounded-full mr-2"
-                                />
+                                {/* Używamy UserAvatar zamiast bezpośredniego tagu <img> */}
+                                <div className="mr-2">
+                                  <UserAvatar 
+                                    userId={getParticipantId(participant)} 
+                                    size={24} 
+                                  />
+                                </div>
                                 <span className="text-sm">{getUserDisplayName(userData)}</span>
                               </div>
                             );
@@ -427,11 +440,13 @@ export default function EventList({ limit, compact = false }: EventListProps) {
   
                             return (
                               <div key={participant.id} className="flex items-center bg-blue-100 rounded-full px-3 py-1">
-                                <img
-                                  src={userData?.img || DEFAULT_AVATAR}
-                                  alt={`${getUserDisplayName(userData)}'s avatar`}
-                                  className="w-6 h-6 rounded-full mr-2"
-                                />
+                                {/* Używamy UserAvatar zamiast bezpośredniego tagu <img> */}
+                                <div className="mr-2">
+                                  <UserAvatar 
+                                    userId={getParticipantId(participant)} 
+                                    size={24} 
+                                  />
+                                </div>
                                 <span className="text-sm">{getUserDisplayName(userData)}</span>
                               </div>
                             );
