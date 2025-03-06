@@ -9,6 +9,7 @@ export const pl = {
     search: "Szukaj...",
     viewAll: "Zobacz wszystkie",
     cancel: "Anuluj",
+    loading: "Loading...",
     calendar: {
       title: "Kalendarz",
       upcomingEvents: "Nadchodzące wydarzenia"
@@ -119,6 +120,49 @@ export const pl = {
           phone: "Telefon",
           email: "Email"
         }
+      }
+    },
+    announcements: {
+      title: "Ogłoszenia",
+      noAnnouncements: "Brak ogłoszeń",
+      createdBy: "Dodane przez",
+      addComment: "Dodaj komentarz...",
+      sendComment: "Wyślij",
+      comments: "Komentarze",
+      noComments: "Brak komentarzy",
+      delete: {
+        confirm: "Czy na pewno chcesz usunąć to ogłoszenie?"
+      },
+      participation: {
+        going: "Wezmę udział",
+        interested: "Zainteresowany/a",
+        spotsFilled: "miejsc zajętych"
+      },
+      participants: {
+        going: "Uczestnicy",
+        interested: "Zainteresowani"
+      },
+      filters: {
+        title: "Filtry",
+        myAnnouncements: "Moje ogłoszenia",
+        onlyPinned: "Tylko przypięte",
+        withComments: "Z komentarzami"
+      },
+      stats: {
+        title: "Statystyki",
+        total: "Wszystkie ogłoszenia",
+        thisMonth: "W tym miesiącu",
+        created: "Utworzone przez Ciebie"
+      },
+      // Dodaj sekcję create
+      create: {
+        title: "Utwórz nowe ogłoszenie",
+        titleLabel: "Tytuł",
+        descriptionLabel: "Treść ogłoszenia",
+        classLabel: "Klasa (opcjonalnie)",
+        allClasses: "Wszystkie klasy (ogłoszenie globalne)",
+        pinAnnouncement: "Przypnij ogłoszenie",
+        submit: "Dodaj ogłoszenie"
       }
     },
     news: {

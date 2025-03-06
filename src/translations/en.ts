@@ -9,6 +9,7 @@ export const en = {
     search: "Search...",
     viewAll: "View all",
     cancel: "Cancel",
+    loading: "Ładowanie...",
     calendar: {
       title: "Calendar",
       upcomingEvents: "Upcoming Events"
@@ -121,6 +122,50 @@ export const en = {
         }
       }
     },
+    announcements: {
+      title: "Announcements",
+      noAnnouncements: "No announcements",
+      createdBy: "Created by",
+      addComment: "Add a comment...",
+      sendComment: "Send",
+      comments: "Comments",
+      noComments: "No comments",
+      delete: {
+        confirm: "Are you sure you want to delete this announcement?"
+      },
+      participation: {
+        going: "I'll attend",
+        interested: "Interested",
+        spotsFilled: "spots filled"
+      },
+      participants: {
+        going: "Participants",
+        interested: "Interested"
+      },
+      filters: {
+        title: "Filters",
+        myAnnouncements: "My announcements",
+        onlyPinned: "Only pinned",
+        withComments: "With comments"
+      },
+      stats: {
+        title: "Statistics",
+        total: "All announcements",
+        thisMonth: "This month",
+        created: "Created by you"
+      },
+      // Add create section
+      create: {
+        title: "Create new announcement",
+        titleLabel: "Title",
+        descriptionLabel: "Content",
+        classLabel: "Class (optional)",
+        allClasses: "All classes (global announcement)",
+        pinAnnouncement: "Pin announcement",
+        submit: "Add announcement"
+      }
+    },
+    
     news: {
       categories: {
         country: "National",
