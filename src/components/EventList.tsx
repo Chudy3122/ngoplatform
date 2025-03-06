@@ -117,6 +117,13 @@ interface EventListProps {
   dateParam?: string;
 }
 
+interface AuthorInfo {
+  [key: string]: {
+    name: string;
+    loading: boolean;
+  }
+}
+
 export default function EventList({ limit, compact = false }: EventListProps) {
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
@@ -126,6 +133,7 @@ export default function EventList({ limit, compact = false }: EventListProps) {
     attending: 0,
     created: 0,
   });
+  const [authorsInfo, setAuthorsInfo] = useState<AuthorInfo>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({
@@ -145,10 +153,72 @@ export default function EventList({ limit, compact = false }: EventListProps) {
   };
 
   const getAuthorDisplayName = (event: Event) => {
+    const authorId = getAuthorId(event);
+    
+    // Jeśli mamy już pobrane dane o autorze, użyj ich
+    if (authorsInfo[authorId]) {
+      return authorsInfo[authorId].loading 
+        ? 'Ładowanie...' 
+        : authorsInfo[authorId].name;
+    }
+    
+    // Jeśli dane są już dostępne w event
     const author = event.authorStudent || event.authorTeacher || event.authorAdmin || event.authorParent;
-    if (!author) return 'Unknown User';
-    if (author.name && author.surname) return `${author.name} ${author.surname}`;
-    return author.username;
+    if (author && author.name && author.surname) {
+      return `${author.name} ${author.surname}`;
+    }
+    if (author && author.username && !author.username.startsWith('user_')) {
+      return author.username;
+    }
+    
+    // Jeśli nie ma danych, rozpocznij pobieranie
+    fetchAuthorInfo(authorId);
+    
+    // Zwróć tymczasową wartość
+    return 'Ładowanie...';
+  };
+
+  const fetchAuthorInfo = async (authorId: string) => {
+    // Jeśli już pobieramy dane dla tego autora, nie rób tego ponownie
+    if (authorsInfo[authorId]?.loading) return;
+    
+    // Oznacz, że rozpoczęliśmy pobieranie danych
+    setAuthorsInfo(prev => ({
+      ...prev,
+      [authorId]: { name: 'Ładowanie...', loading: true }
+    }));
+    
+    try {
+      const response = await fetch(`/api/userprofile?id=${encodeURIComponent(authorId)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        let displayName = data.username;
+        
+        // Użyj imienia i nazwiska, jeśli są dostępne
+        if (data.name && data.surname) {
+          displayName = `${data.name} ${data.surname}`;
+        }
+        
+        // Zapisz pobrane dane
+        setAuthorsInfo(prev => ({
+          ...prev,
+          [authorId]: { name: displayName, loading: false }
+        }));
+      } else {
+        // W przypadku błędu
+        setAuthorsInfo(prev => ({
+          ...prev,
+          [authorId]: { name: 'Nieznany użytkownik', loading: false }
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching author info:', error);
+      setAuthorsInfo(prev => ({
+        ...prev,
+        [authorId]: { name: 'Nieznany użytkownik', loading: false }
+      }));
+    }
   };
 
   const getAuthorId = (event: Event) => {
