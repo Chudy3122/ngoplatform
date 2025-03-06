@@ -7,6 +7,8 @@ import { format } from 'date-fns';
 import { pl as plLocale, enUS } from 'date-fns/locale';
 import { EventItem } from '@/components/events/EventItem';
 import UserAvatar from '@/components/UserAvatar';
+import { EventParticipant } from '@/components/EventParticipant';
+
 
 const DEFAULT_AVATAR = "/noAvatar.png";
 
@@ -481,7 +483,7 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                 </div>
               </div>
   
-              {/* Lista uczestników ze zaktualizowanymi avatarami */}
+              {/* Lista uczestników ze zaktualizowanymi komponentami */}
               {event.participants.length > 0 && (
                 <div className="mt-4 space-y-4 bg-white p-4 rounded-lg shadow-sm">
                   {event.participants.filter(p => p.status === 'GOING').length > 0 && (
@@ -490,56 +492,26 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                       <div className="flex flex-wrap gap-2">
                         {event.participants
                           .filter(p => p.status === 'GOING')
-                          .map((participant) => {
-                            const userData = 
-                              participant.participantStudent ||
-                              participant.participantTeacher ||
-                              participant.participantAdmin ||
-                              participant.participantParent;
-  
-                            return (
-                              <div key={participant.id} className="flex items-center bg-green-100 rounded-full px-3 py-1">
-                                {/* Używamy UserAvatar zamiast bezpośredniego tagu <img> */}
-                                <div className="mr-2">
-                                  <UserAvatar 
-                                    userId={getParticipantId(participant)} 
-                                    size={24} 
-                                  />
-                                </div>
-                                <span className="text-sm">{getUserDisplayName(userData)}</span>
-                              </div>
-                            );
-                          })}
+                          .map((participant) => (
+                            <div key={participant.id} className="flex items-center bg-green-100 rounded-full px-3 py-1">
+                              <EventParticipant userId={getParticipantId(participant)} size={24} />
+                            </div>
+                          ))}
                       </div>
                     </div>
                   )}
-  
+
                   {event.participants.filter(p => p.status === 'INTERESTED').length > 0 && (
                     <div>
                       <h4 className="font-medium text-sm mb-2">{t.events.participants.interested}:</h4>
                       <div className="flex flex-wrap gap-2">
                         {event.participants
                           .filter(p => p.status === 'INTERESTED')
-                          .map((participant) => {
-                            const userData = 
-                              participant.participantStudent ||
-                              participant.participantTeacher ||
-                              participant.participantAdmin ||
-                              participant.participantParent;
-  
-                            return (
-                              <div key={participant.id} className="flex items-center bg-blue-100 rounded-full px-3 py-1">
-                                {/* Używamy UserAvatar zamiast bezpośredniego tagu <img> */}
-                                <div className="mr-2">
-                                  <UserAvatar 
-                                    userId={getParticipantId(participant)} 
-                                    size={24} 
-                                  />
-                                </div>
-                                <span className="text-sm">{getUserDisplayName(userData)}</span>
-                              </div>
-                            );
-                          })}
+                          .map((participant) => (
+                            <div key={participant.id} className="flex items-center bg-blue-100 rounded-full px-3 py-1">
+                              <EventParticipant userId={getParticipantId(participant)} size={24} />
+                            </div>
+                          ))}
                       </div>
                     </div>
                   )}
