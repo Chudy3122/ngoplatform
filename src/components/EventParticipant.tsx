@@ -2,61 +2,89 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import UserAvatar from '@/components/UserAvatar';
+import { useUser } from "@clerk/nextjs";
 
-interface EventParticipantProps {
-  userId: string;
-  size?: number;
+interface UserData {
+  id: string;
+  username: string;
+  name?: string;
+  surname?: string;
+  img?: string;
+  type?: string;
 }
 
-export function EventParticipant({ userId, size = 24 }: EventParticipantProps) {
-  const [userData, setUserData] = useState<any>(null);
+export function EventParticipant({ userId, size = 24 }: { userId: string, size?: number }) {
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useUser();
 
   useEffect(() => {
     const fetchUserData = async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      
+      // Jeśli to bieżący użytkownik z Clerk, użyj jego danych
+      if (user && user.id === userId) {
+        setUserData({
+          id: user.id,
+          username: user.username || user.id,
+          name: user.firstName || undefined,
+          surname: user.lastName || undefined,
+          img: user.imageUrl
+        });
+        setLoading(false);
+        return;
+      }
+      
       try {
-        setLoading(true);
         const response = await fetch(`/api/userprofile?id=${encodeURIComponent(userId)}`);
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch user data: ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserData(data);
+        } else {
+          // Jeśli odpowiedź nie jest ok, ustaw domyślne dane
+          setUserData({ 
+            id: userId,
+            username: 'Unknown User'
+          });
         }
-        
-        const data = await response.json();
-        setUserData(data);
-      } catch (err) {
-        console.error('Error fetching user data:', err);
-        setError('Failed to load user data');
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        setUserData({ 
+          id: userId,
+          username: 'Unknown User'
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    if (userId) {
-      fetchUserData();
-    }
-  }, [userId]);
+    fetchUserData();
+  }, [userId, user]);
 
-  // Funkcja do generowania wyświetlanej nazwy uczestnika
-  const getDisplayName = () => {
-    if (loading) return 'Ładowanie...';
-    if (error || !userData) return 'Nieznany użytkownik';
-    
-    if (userData.name && userData.surname) {
-      return `${userData.name} ${userData.surname}`;
-    }
-    
+  const getUserDisplayName = () => {
+    if (!userData) return 'Unknown User';
+    if (userData.name && userData.surname) return `${userData.name} ${userData.surname}`;
     return userData.username;
   };
 
   return (
     <div className="flex items-center gap-2">
-      <div className="mr-1">
-        <UserAvatar userId={userId} size={size} />
+      <div className="flex-shrink-0">
+        <img
+          src={userData?.img || "/noAvatar.png"}
+          alt={getUserDisplayName()}
+          className="rounded-full object-cover"
+          style={{ width: `${size}px`, height: `${size}px` }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/noAvatar.png";
+          }}
+        />
       </div>
-      <span className="text-sm">{getDisplayName()}</span>
+      <span className="text-sm">{loading ? "Loading..." : getUserDisplayName()}</span>
     </div>
   );
 }

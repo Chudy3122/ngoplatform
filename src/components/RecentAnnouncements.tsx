@@ -4,7 +4,25 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from '@/hooks/useTranslations';
 import Link from 'next/link';
-import { Post } from '../../types/post';
+import UserAvatar from '@/components/UserAvatar';
+
+// Definicja typu Post
+type Author = {
+  id: string;
+  name?: string;
+  surname?: string;
+  username?: string;
+  img?: string;
+};
+
+type Post = {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  authorId: string;
+  author?: Author;
+};
 
 export default function RecentAnnouncements() {
   const t = useTranslations();
@@ -28,6 +46,19 @@ export default function RecentAnnouncements() {
     fetchPosts();
   }, []);
 
+  // Funkcja pomocnicza do wyświetlania imienia i nazwiska autora
+  const getAuthorDisplayName = (post: Post) => {
+    if (!post.author) return 'Unknown User';
+    
+    if (post.author.name && post.author.surname) {
+      return `${post.author.name} ${post.author.surname}`;
+    } else if (post.author.username) {
+      return post.author.username;
+    }
+    
+    return 'Unknown User';
+  };
+
   if (loading) return <div className="text-center p-4">Loading...</div>;
 
   return (
@@ -46,13 +77,13 @@ export default function RecentAnnouncements() {
         {posts.map((post) => (
           <div key={post.id} className="p-4 rounded-lg bg-gray-50">
             <div className="flex items-center gap-2 mb-2">
-              <img
-                src={post.author?.img || "/noAvatar.png"}
-                alt={post.author?.name || "User"}
-                className="w-8 h-8 rounded-full"
+              {/* Używamy komponentu UserAvatar zamiast bezpośredniego img */}
+              <UserAvatar
+                userId={post.authorId}
+                size={32}
               />
               <div>
-                <h3 className="font-semibold">{post.author?.name} {post.author?.surname}</h3>
+                <h3 className="font-semibold">{getAuthorDisplayName(post)}</h3>
                 <p className="text-xs text-gray-500">
                   {new Date(post.createdAt).toLocaleDateString()}
                 </p>
