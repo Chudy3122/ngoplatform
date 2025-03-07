@@ -1,29 +1,83 @@
-import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+"use client";
 
-const Announcements = async () => {
-  const authData = await auth();
-  const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
-  const currentUserId = authData.userId;
+import { useState, useEffect } from 'react';
+import { useTranslations } from '@/hooks/useTranslations';
+import UserAvatar from '@/components/UserAvatar';
 
-  const roleConditions = {
-    teacher: { lessons: { some: { teacherId: currentUserId! } } },
-    student: { students: { some: { id: currentUserId! } } },
-    parent: { students: { some: { parentId: currentUserId! } } },
+// Zdefiniuj typ dla ogłoszenia
+type Announcement = {
+  id: number;
+  title: string;
+  description?: string;
+  content?: string;
+  date?: string | Date;
+  createdAt?: string | Date;
+  authorId?: string;
+  authorName?: string;
+};
+
+// Uproszczony komponent do wyświetlania ogłoszeń
+const Announcements = () => {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const t = useTranslations();
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      try {
+        console.log("Pobieranie ogłoszeń...");
+        const response = await fetch('/api/announcements');
+        if (!response.ok) {
+          console.error("Błąd podczas pobierania ogłoszeń:", response.status, response.statusText);
+          throw new Error('Nie udało się pobrać ogłoszeń');
+        }
+        
+        const data = await response.json();
+        console.log("Pobrane ogłoszenia:", data);
+        setAnnouncements(data);
+      } catch (error) {
+        console.error('Błąd:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnnouncements();
+  }, []);
+
+  // Funkcja do usuwania posta
+  const deletePost = async (id: number) => {
+    if (confirm('Czy na pewno chcesz usunąć ten post?')) {
+      try {
+        console.log("Próba usunięcia posta ID:", id);
+        const response = await fetch(`/api/posts/${id}`, {
+          method: 'DELETE',
+        });
+        
+        console.log("Odpowiedź DELETE:", response.status, response.statusText);
+        
+        if (response.ok) {
+          setAnnouncements(prev => prev.filter(post => post.id !== id));
+          alert('Post został usunięty pomyślnie');
+        } else {
+          alert('Błąd podczas usuwania posta');
+        }
+      } catch (error) {
+        console.error('Błąd:', error);
+        alert('Wystąpił błąd podczas usuwania posta');
+      }
+    }
   };
 
-  const data = await prisma.announcement.findMany({
-    take: 3,
-    orderBy: { date: "desc" },
-    where: {
-      ...(role !== "admin" && {
-        OR: [
-          { classId: null },
-          { class: roleConditions[role as keyof typeof roleConditions] || {} },
-        ],
-      }),
-    },
-  });
+  if (loading) {
+    return (
+      <div className="bg-white p-4 rounded-md">
+        <div className="flex justify-center items-center h-40">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-4 rounded-md">
@@ -31,39 +85,43 @@ const Announcements = async () => {
         <h1 className="text-xl font-semibold">Ogłoszenia</h1>
       </div>
       <div className="flex flex-col gap-4 mt-4">
-        {data[0] && (
-          <div className="bg-lamaSkyLight rounded-md p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-medium">{data[0].title}</h2>
-              <span className="text-xs text-gray-400 bg-white rounded-md px-1 py-1">
-                {new Intl.DateTimeFormat("en-GB").format(data[0].date)}
-              </span>
+        {announcements.map((announcement, index) => {
+          const bgColor = index === 0 ? "bg-lamaSkyLight" : 
+                          index === 1 ? "bg-lamaPurpleLight" : 
+                          "bg-lamaYellowLight";
+          
+          return (
+            <div key={announcement.id} className={`${bgColor} rounded-md p-4`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <UserAvatar 
+                    userId={announcement.authorId || "default-user-id"} 
+                    size={32} 
+                  />
+                  <div>
+                    <h2 className="font-medium">{announcement.title}</h2>
+                    <div className="text-xs text-gray-500">
+                      {announcement.authorName || "Nieznany użytkownik"}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 bg-white rounded-md px-1 py-1">
+                    {new Date(announcement.date || announcement.createdAt || new Date()).toLocaleDateString()}
+                  </span>
+                  
+                  <button 
+                    onClick={() => deletePost(announcement.id)}
+                    className="text-red-500 hover:text-red-700 text-xs bg-white rounded-md px-2 py-1"
+                  >
+                    Usuń
+                  </button>
+                </div>
+              </div>
+              <p className="text-sm text-gray-400 mt-1">{announcement.description || announcement.content || ""}</p>
             </div>
-            <p className="text-sm text-gray-400 mt-1">{data[0].description}</p>
-          </div>
-        )}
-        {data[1] && (
-          <div className="bg-lamaPurpleLight rounded-md p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-medium">{data[1].title}</h2>
-              <span className="text-xs text-gray-400 bg-white rounded-md px-1 py-1">
-                {new Intl.DateTimeFormat("en-GB").format(data[1].date)}
-              </span>
-            </div>
-            <p className="text-sm text-gray-400 mt-1">{data[1].description}</p>
-          </div>
-        )}
-        {data[2] && (
-          <div className="bg-lamaYellowLight rounded-md p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-medium">{data[2].title}</h2>
-              <span className="text-xs text-gray-400 bg-white rounded-md px-1 py-1">
-                {new Intl.DateTimeFormat("en-GB").format(data[2].date)}
-              </span>
-            </div>
-            <p className="text-sm text-gray-400 mt-1">{data[2].description}</p>
-          </div>
-        )}
+          );
+        })}
       </div>
     </div>
   );
