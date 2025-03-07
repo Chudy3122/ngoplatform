@@ -1,91 +1,115 @@
-// src/app/api/userprofile/route.ts
-import { NextResponse } from "next/server";
+// app/api/userprofile/route.ts
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { Admin, Teacher, Student, Parent } from "@prisma/client";
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('id');
+    const userId = req.nextUrl.searchParams.get('id');
     
     if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 });
+      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
     
-    console.log(`Getting profile for user: ${userId}`);
-    
-    // Sprawdź wszystkie typy użytkowników
-    const [admin, teacher, student, parent] = await Promise.all([
-      prisma.admin.findUnique({ where: { id: userId } }),
-      prisma.teacher.findUnique({ where: { id: userId } }),
-      prisma.student.findUnique({ where: { id: userId } }),
-      prisma.parent.findUnique({ where: { id: userId } })
-    ]);
-    
-    // Przygotuj podstawową odpowiedź
-    let response: Record<string, any> = {
-      id: '',
-      username: '',
-      name: 'Unknown',
-      type: '',
-    };
-    
-    if (admin) {
-      response = {
-        id: admin.id,
-        username: admin.username,
-        name: admin.name || 'Admin',
-        type: 'admin',
-        email: admin.email,
-      };
-      
-      // Admin może mieć zdjęcie profilowe
-      if ('img' in admin && admin.img) {
-        response.img = admin.img;
+    // Znajdź studenta w bazie danych na podstawie ID
+    const student = await prisma.student.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        surname: true,
+        img: true
       }
-    } else if (teacher) {
-      response = {
-        id: teacher.id,
-        username: teacher.username,
-        name: teacher.name,
-        surname: teacher.surname,
-        type: 'teacher',
-        email: teacher.email,
-      };
-      
-      if ('img' in teacher && teacher.img) {
-        response.img = teacher.img;
-      }
-    } else if (student) {
-      response = {
+    });
+    
+    if (student) {
+      return NextResponse.json({
         id: student.id,
-        username: student.username,
+        username: student.username || 'User',
         name: student.name,
         surname: student.surname,
-        type: 'student',
-        email: student.email,
-      };
-      
-      if ('img' in student && student.img) {
-        response.img = student.img;
-      }
-    } else if (parent) {
-      response = {
-        id: parent.id,
-        username: parent.username,
-        name: parent.name,
-        surname: parent.surname,
-        type: 'parent',
-        email: parent.email,
-      };
-      // Parent nie ma pola img w schemacie
-    } else {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+        img: student.img,
+        loading: false
+      });
     }
     
-    return NextResponse.json(response);
+    // Jeśli nie znaleziono studenta, sprawdź inne typy użytkowników
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        surname: true,
+        img: true
+      }
+    });
+    
+    if (teacher) {
+      return NextResponse.json({
+        id: teacher.id,
+        username: teacher.username || 'User',
+        name: teacher.name,
+        surname: teacher.surname,
+        img: teacher.img,
+        loading: false
+      });
+    }
+    
+    // Sprawdź admina
+    const admin = await prisma.admin.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        img: true
+      }
+    });
+    
+    if (admin) {
+      return NextResponse.json({
+        id: admin.id,
+        username: admin.username || 'User',
+        name: admin.name,
+        img: admin.img,
+        loading: false
+      });
+    }
+    
+    // Sprawdź rodzica
+    const parent = await prisma.parent.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        surname: true
+      }
+    });
+    
+    if (parent) {
+      return NextResponse.json({
+        id: parent.id,
+        username: parent.username || 'User',
+        name: parent.name,
+        surname: parent.surname,
+        loading: false
+      });
+    }
+    
+    // Jeśli nie znaleziono użytkownika w żadnej tabeli
+    return NextResponse.json({ 
+      id: userId, 
+      username: 'Unknown User',
+      loading: false
+    });
+
   } catch (error) {
-    console.error("Error in userprofile API:", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error("Error fetching user:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch user" },
+      { status: 500 }
+    );
   }
 }

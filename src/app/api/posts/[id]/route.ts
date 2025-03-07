@@ -1,21 +1,21 @@
 // app/api/posts/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getAuth } from "@clerk/nextjs/server";
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { userId } = await auth();
+    const { userId } = getAuth(req);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const postId = parseInt(params.id);
     
-    // Sprawdź czy post istnieje i czy należy do użytkownika
+    // Sprawdź czy post istnieje
     const post = await prisma.post.findUnique({
       where: { id: postId },
       select: { authorId: true }
@@ -25,6 +25,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
+    // Sprawdź czy użytkownik jest autorem posta
     if (post.authorId !== userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }

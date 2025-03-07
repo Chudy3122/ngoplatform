@@ -333,9 +333,9 @@ model Announcement {
   title       String
   description String
   date        DateTime
-  authorId    String?  // Dodajemy tylko jedno pole bez relacji
-  classId     Int?
-  class       Class?   @relation(fields: [classId], references: [id])
+
+  classId Int?
+  class   Class? @relation(fields: [classId], references: [id])
 }
 
 model Message {
