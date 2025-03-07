@@ -5,12 +5,15 @@ import { useTranslations } from '@/hooks/useTranslations';
 import UserAvatar from '@/components/UserAvatar';
 import { useAuth } from '@clerk/nextjs';
 
-type Announcement = {
+// Wspólny typ dla obu modeli
+type Post = {
   id: number;
   title: string;
-  content: string; // Zmiana z description na content zgodnie z modelem Prisma
-  createdAt: string; // Zmiana z date na createdAt zgodnie z modelem Prisma
-  authorId: string;
+  content?: string;  // z modelu Post
+  description?: string;  // z modelu Announcement
+  createdAt?: Date | string;  // z modelu Post
+  date?: Date | string;  // z modelu Announcement
+  authorId?: string;
 };
 
 type AuthorInfo = {
@@ -23,41 +26,46 @@ type AuthorInfo = {
 };
 
 const Announcements = () => {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [authorsInfo, setAuthorsInfo] = useState<Record<string, AuthorInfo>>({});
   const [loading, setLoading] = useState(true);
   const t = useTranslations();
-  const { userId } = useAuth(); // Pobierz ID zalogowanego użytkownika
+  const { userId } = useAuth();
 
   useEffect(() => {
-    const fetchAnnouncements = async () => {
+    const fetchPosts = async () => {
       try {
+        console.log("Fetching posts...");
         const response = await fetch('/api/posts?limit=3');
-        if (!response.ok) throw new Error('Nie udało się pobrać ogłoszeń');
-        const data = await response.json();
-        setAnnouncements(data);
+        if (!response.ok) {
+          console.error("Failed to fetch posts:", response.status, response.statusText);
+          throw new Error('Nie udało się pobrać postów');
+        }
         
-        // Pobierz informacje o autorach
-        data.forEach((announcement: Announcement) => {
-          if (announcement.authorId) {
-            fetchAuthorInfo(announcement.authorId);
+        const data = await response.json();
+        console.log("Posts data:", data);
+        setPosts(data);
+        
+        // Pobierz informacje o autorach (tylko jeśli są authorId)
+        data.forEach((post: Post) => {
+          if (post.authorId) {
+            fetchAuthorInfo(post.authorId);
           }
         });
       } catch (error) {
-        console.error('Błąd podczas pobierania ogłoszeń:', error);
+        console.error('Błąd podczas pobierania postów:', error);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchAnnouncements();
+    
+    fetchPosts();
   }, []);
 
   const fetchAuthorInfo = async (authorId: string) => {
-    // Jeśli już pobieramy dane dla tego autora, nie rób tego ponownie
     if (authorsInfo[authorId]?.loading) return;
     
-    // Oznacz, że rozpoczęliśmy pobieranie danych
+    console.log("Fetching author info for:", authorId);
     setAuthorsInfo(prev => ({
       ...prev,
       [authorId]: { id: authorId, username: 'Ładowanie...', loading: true }
@@ -65,16 +73,17 @@ const Announcements = () => {
     
     try {
       const response = await fetch(`/api/userprofile?id=${encodeURIComponent(authorId)}`);
+      console.log("Author API response status:", response.status);
       
       if (response.ok) {
         const data = await response.json();
-        // Zapisz pobrane dane
+        console.log("Author data:", data);
         setAuthorsInfo(prev => ({
           ...prev,
           [authorId]: { ...data, loading: false }
         }));
       } else {
-        // W przypadku błędu
+        console.error("Error fetching author:", response.statusText);
         setAuthorsInfo(prev => ({
           ...prev,
           [authorId]: { id: authorId, username: 'Nieznany użytkownik', loading: false }
@@ -103,21 +112,32 @@ const Announcements = () => {
     return author.username;
   };
 
-  // Dodaj funkcjonalność usuwania postów
   const deletePost = async (postId: number) => {
     if (confirm('Czy na pewno chcesz usunąć ten post?')) {
       try {
+        console.log("Deleting post:", postId);
         const response = await fetch(`/api/posts/${postId}`, {
           method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
         
+        console.log("Delete response:", response.status, response.statusText);
+        
         if (response.ok) {
-          // Usuń post ze stanu lokalnego
-          setAnnouncements(prev => prev.filter(post => post.id !== postId));
+          setPosts(prev => prev.filter(post => post.id !== postId));
           alert('Post został pomyślnie usunięty');
         } else {
-          const error = await response.json();
-          alert(error.error || 'Nie udało się usunąć posta');
+          let errorMessage = 'Nie udało się usunąć posta';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            console.error("Failed to parse error response:", e);
+          }
+          
+          alert(errorMessage);
         }
       } catch (error) {
         console.error('Błąd podczas usuwania posta:', error);
@@ -142,43 +162,53 @@ const Announcements = () => {
         <h1 className="text-xl font-semibold">Ogłoszenia</h1>
       </div>
       <div className="flex flex-col gap-4 mt-4">
-        {announcements.map((announcement, index) => {
+        {posts.map((post, index) => {
           const bgColor = index === 0 ? "bg-lamaSkyLight" : 
                           index === 1 ? "bg-lamaPurpleLight" : 
                           "bg-lamaYellowLight";
           
+          // Obsługa obu modeli danych
+          const content = post.content || post.description || '';
+          const dateStr = post.createdAt 
+            ? (typeof post.createdAt === 'string' ? post.createdAt : post.createdAt.toISOString())
+            : post.date 
+              ? (typeof post.date === 'string' ? post.date : post.date.toISOString())
+              : '';
+          
           return (
-            <div key={announcement.id} className={`${bgColor} rounded-md p-4`}>
+            <div key={post.id} className={`${bgColor} rounded-md p-4`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <UserAvatar 
-                    userId={announcement.authorId || "default-user-id"} 
-                    size={32} 
-                  />
+                  {post.authorId && (
+                    <UserAvatar 
+                      userId={post.authorId} 
+                      size={32} 
+                    />
+                  )}
                   <div>
-                    <h2 className="font-medium">{announcement.title}</h2>
-                    <div className="text-xs text-gray-500">
-                      {getAuthorDisplayName(announcement.authorId)}
-                    </div>
+                    <h2 className="font-medium">{post.title}</h2>
+                    {post.authorId && (
+                      <div className="text-xs text-gray-500">
+                        {getAuthorDisplayName(post.authorId)}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400 bg-white rounded-md px-1 py-1">
-                    {new Date(announcement.createdAt).toLocaleDateString()}
+                    {dateStr ? new Date(dateStr).toLocaleDateString() : ''}
                   </span>
                   
-                  {/* Przycisk usuwania - pokaż tylko dla autora posta */}
-                  {userId && userId === announcement.authorId && (
-                    <button 
-                      onClick={() => deletePost(announcement.id)}
-                      className="text-red-500 hover:text-red-700 text-xs bg-white rounded-md px-2 py-1"
-                    >
-                      Usuń
-                    </button>
-                  )}
+                  {/* Przycisk usuwania - pokaż dla wszystkich na razie */}
+                  <button 
+                    onClick={() => deletePost(post.id)}
+                    className="text-red-500 hover:text-red-700 text-xs bg-white rounded-md px-2 py-1"
+                  >
+                    Usuń
+                  </button>
                 </div>
               </div>
-              <p className="text-sm text-gray-400 mt-1">{announcement.content}</p>
+              <p className="text-sm text-gray-400 mt-1">{content}</p>
             </div>
           );
         })}
