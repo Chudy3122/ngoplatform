@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
-// Zamienmy toast na zwykły alert, skoro nie masz zainstalowanego react-hot-toast
 
 interface DeleteAnnouncementButtonProps {
   id: number;
@@ -17,20 +16,18 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
     if (confirm("Czy na pewno chcesz usunąć to ogłoszenie?")) {
       try {
         setIsDeleting(true);
-
         const response = await fetch(`/api/announcements?id=${id}`, {
           method: "DELETE",
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Błąd usuwania ogłoszenia");
+          throw new Error("Błąd usuwania ogłoszenia");
         }
 
         alert("Ogłoszenie zostało usunięte");
-        router.refresh(); // Odświeżenie strony, aby zaktualizować listę ogłoszeń
+        router.refresh();
       } catch (error) {
-        console.error("Błąd usuwania ogłoszenia:", error);
+        console.error("Błąd:", error);
         alert("Nie udało się usunąć ogłoszenia");
       } finally {
         setIsDeleting(false);
