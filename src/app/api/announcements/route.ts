@@ -35,50 +35,75 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Usuwanie ogłoszeń
+// Usuwanie ogłoszeń - tylko admin może usuwać
 export async function DELETE(req: NextRequest) {
   try {
     // Sprawdzenie uprawnień użytkownika
     const authData = await auth();
     const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
     
+    // Tylko admin może usuwać ogłoszenia
     if (role !== "admin") {
-      return NextResponse.json({ error: "Brak uprawnień" }, { status: 403 });
+      return NextResponse.json({ error: "Brak uprawnień - tylko admin może usuwać ogłoszenia" }, { status: 403 });
     }
     
+    // Pobranie ID z URL
     const url = new URL(req.url);
-    const id = url.searchParams.get("id");
+    const idParam = url.searchParams.get("id");
     
-    if (!id) {
-      return NextResponse.json({ error: "Brak ID" }, { status: 400 });
+    if (!idParam) {
+      return NextResponse.json({ error: "Brak parametru ID" }, { status: 400 });
     }
     
-    await prisma.announcement.delete({
-      where: { id: parseInt(id, 10) }
+    // Konwersja ID do liczby
+    const id = parseInt(idParam, 10);
+    
+    if (isNaN(id)) {
+      return NextResponse.json({ error: "Nieprawidłowy format ID" }, { status: 400 });
+    }
+    
+    // Usunięcie ogłoszenia
+    const deleted = await prisma.announcement.delete({
+      where: { id }
     });
     
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deleted });
   } catch (error) {
     console.error("Błąd usuwania ogłoszenia:", error);
-    return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
+    // Sprawdźmy czy to błąd Prisma "Record not found"
+    if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
+      return NextResponse.json({ error: "Ogłoszenie nie istnieje lub zostało już usunięte" }, { status: 404 });
+    }
+    return NextResponse.json({ error: "Błąd usuwania ogłoszenia" }, { status: 500 });
   }
 }
 
-// Tworzenie ogłoszeń
+// Tworzenie ogłoszeń - wszyscy użytkownicy mogą tworzyć
 export async function POST(req: NextRequest) {
   try {
-    // Sprawdzenie uprawnień
+    // Sprawdzenie czy użytkownik jest zalogowany
     const authData = await auth();
-    const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
+    const userId = authData.userId;
     
-    if (!role || !["admin", "teacher", "parent"].includes(role)) {
-      return NextResponse.json({ error: "Brak uprawnień" }, { status: 403 });
+    // Sprawdzamy tylko czy użytkownik jest zalogowany
+    if (!userId) {
+      return NextResponse.json({ error: "Musisz być zalogowany" }, { status: 401 });
     }
     
+    // Pobranie danych z żądania
     const data = await req.json();
     
     if (!data.title || !data.description) {
-      return NextResponse.json({ error: "Niepełne dane" }, { status: 400 });
+      return NextResponse.json({ error: "Wymagane pola: title, description" }, { status: 400 });
+    }
+    
+    // Tworzenie ogłoszenia - bezpieczna konwersja classId jeśli istnieje
+    let classId = null;
+    if (data.classId) {
+      const parsedClassId = parseInt(data.classId, 10);
+      if (!isNaN(parsedClassId)) {
+        classId = parsedClassId;
+      }
     }
     
     const announcement = await prisma.announcement.create({
@@ -86,13 +111,13 @@ export async function POST(req: NextRequest) {
         title: data.title,
         description: data.description,
         date: new Date(),
-        classId: data.classId || null
+        classId: classId
       }
     });
     
     return NextResponse.json(announcement);
   } catch (error) {
     console.error("Błąd tworzenia ogłoszenia:", error);
-    return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
+    return NextResponse.json({ error: "Błąd tworzenia ogłoszenia" }, { status: 500 });
   }
 }
