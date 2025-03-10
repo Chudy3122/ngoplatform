@@ -1,54 +1,51 @@
-// src/app/api/posts/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-
-// Obsługa CORS
-export function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization'
-    }
-  });
-}
+import { auth } from "@clerk/nextjs/server";
 
 export async function DELETE(
-  req: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log("Otrzymano żądanie DELETE dla ID:", params.id);
-    
-    const postId = parseInt(params.id);
-    
-    // Spróbuj usunąć post
-    try {
-      await prisma.post.delete({
-        where: { id: postId }
-      });
-      console.log("Post usunięty pomyślnie");
-      return NextResponse.json({ success: true });
-    } catch (e) {
-      console.error("Błąd usuwania z tabeli Post:", e);
-      
-      // Spróbuj Announcement
-      try {
-        await prisma.announcement.delete({
-          where: { id: postId }
-        });
-        console.log("Announcement usunięty pomyślnie");
-        return NextResponse.json({ success: true });
-      } catch (e2) {
-        console.error("Błąd usuwania z tabeli Announcement:", e2);
-        return NextResponse.json({ error: "Nie znaleziono posta" }, { status: 404 });
-      }
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const postId = parseInt(params.id);
+
+    // Sprawdź czy post istnieje
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+    });
+
+    if (!post) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Sprawdź czy użytkownik jest właścicielem posta
+    if (post.authorId !== userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // Usuń wszystkie reakcje i komentarze powiązane z postem
+    await prisma.$transaction([
+      prisma.reaction.deleteMany({
+        where: { postId },
+      }),
+      prisma.comment.deleteMany({
+        where: { postId },
+      }),
+      prisma.post.delete({
+        where: { id: postId },
+      }),
+    ]);
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Błąd podczas usuwania:", error);
+    console.error('Error deleting post:', error);
     return NextResponse.json(
-      { error: "Wystąpił błąd podczas usuwania" },
+      { error: "Failed to delete post" },
       { status: 500 }
     );
   }
