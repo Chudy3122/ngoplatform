@@ -56,22 +56,25 @@ export default function PostList({ limit }: { limit?: number }) {
     if (!confirm(t.posts.delete.confirm)) {
       return;
     }
-
+  
     try {
-      // Zamiast DELETE, użyj POST do dedykowanego endpointu
-      const response = await fetch('/api/delete-post', {
-        method: 'POST',
+      // Podajemy więcej informacji w zapytaniu
+      const response = await fetch(`/api/posts?id=${postId}`, {
+        method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          // Upewnij się, że ciasteczka uwierzytelniające są przesyłane
+          'credentials': 'include'
         },
-        body: JSON.stringify({ postId })
+        // Dodajemy dodatkowe informacje, które mogą pomóc w identyfikacji użytkownika
+        credentials: 'include'
       });
-
+  
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to delete post');
       }
-
+  
       // Odśwież listę postów
       await fetchPosts();
       
