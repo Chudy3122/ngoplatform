@@ -1,3 +1,4 @@
+// components/DeleteAnnouncementButton.tsx
 "use client";
 
 import { useState } from "react";
@@ -15,13 +16,13 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
       try {
         setIsDeleting(true);
         
-        // Użyj nowego endpointu z metodą POST
-        const response = await fetch('/api/custom-delete', {
+        // Użyj dedykowanego endpointu do usuwania ogłoszeń
+        const response = await fetch('/api/delete-announcement', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ postId: id }),
+          body: JSON.stringify({ announcementId: id }),
         });
         
         if (!response.ok) {
