@@ -1,6 +1,5 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
-import DeleteAnnouncementButton from "./DeleteAnnouncementButton";
 
 const Announcements = async () => {
   const authData = await auth();
@@ -47,9 +46,7 @@ const Announcements = async () => {
                 <span className="text-xs text-gray-400 bg-white rounded-md px-1 py-1">
                   {new Intl.DateTimeFormat("en-GB").format(announcement.date)}
                 </span>
-                {role === "admin" && (
-                  <DeleteAnnouncementButton id={announcement.id} />
-                )}
+                {/* Usunięto przycisk usuwania */}
               </div>
             </div>
             <p className="text-sm text-gray-400 mt-1">{announcement.description}</p>
