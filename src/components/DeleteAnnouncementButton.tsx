@@ -15,13 +15,13 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
       try {
         setIsDeleting(true);
         
-        // Użyjmy metody POST, która obsługuje ID posta jako parametr zapytania
-        const response = await fetch(`/api/posts?id=${id}`, {
-          method: 'DELETE',
+        // Użyj nowego endpointu z metodą POST
+        const response = await fetch('/api/custom-delete', {
+          method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
-          }
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ postId: id }),
         });
         
         if (!response.ok) {

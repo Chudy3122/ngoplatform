@@ -5,7 +5,8 @@ import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { postId } = await req.json();
+    const body = await req.json();
+    const { postId } = body;
     
     if (!postId) {
       return NextResponse.json({ error: "Missing post ID" }, { status: 400 });
@@ -17,28 +18,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
     }
     
-    // Sprawdzenie uprawnień użytkownika
     const authData = await auth();
-    const userId = authData.userId;
     const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
     const isAdmin = role === "admin";
     
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-    // Sprawdź czy post istnieje
-    const post = await prisma.post.findUnique({
-      where: { id },
-    });
-    
-    if (!post) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
-    }
-    
-    // Tylko autor lub admin może usunąć post
-    if (post.authorId !== userId && !isAdmin) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    if (!isAdmin) {
+      return NextResponse.json({ error: "Only admin can delete posts" }, { status: 403 });
     }
     
     // Usuń powiązane dane i post
