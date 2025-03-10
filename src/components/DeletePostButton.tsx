@@ -1,3 +1,4 @@
+// DeletePostButton.tsx - całkowicie nowa implementacja
 "use client";
 
 import { useState } from "react";
@@ -5,47 +6,37 @@ import { Trash } from "lucide-react";
 
 interface DeletePostButtonProps {
   postId: number;
-  onPostDeleted?: () => void;
 }
 
-export default function DeletePostButton({ postId, onPostDeleted }: DeletePostButtonProps) {
+export default function DeletePostButton({ postId }: DeletePostButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(`Czy na pewno chcesz usunąć ten post?`)) {
+    if (!confirm("Czy na pewno chcesz usunąć ten post?")) {
       return;
     }
 
     try {
       setIsDeleting(true);
       
-      // Użyj alternatywnego endpointu, który używa metody POST zamiast DELETE
-      const response = await fetch('/api/post-delete', {
+      // Używamy metody POST zamiast DELETE
+      const response = await fetch('/api/custom-delete', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ postId }),
+        body: JSON.stringify({ postId })
       });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to delete post");
+        throw new Error("Nie udało się usunąć posta");
       }
 
-      alert("Post został usunięty");
-      
-      if (onPostDeleted) {
-        onPostDeleted();
-      } else {
-        window.location.reload();
-      }
+      // Odświeżamy stronę po udanym usunięciu
+      window.location.reload();
     } catch (error) {
-      console.error("Error deleting post:", error);
-      alert(error instanceof Error ? error.message : "Error deleting post");
+      console.error("Błąd podczas usuwania:", error);
+      alert("Nie udało się usunąć posta");
     } finally {
       setIsDeleting(false);
     }
@@ -57,10 +48,8 @@ export default function DeletePostButton({ postId, onPostDeleted }: DeletePostBu
       disabled={isDeleting}
       className="text-red-500 hover:text-red-700 p-1 rounded transition-colors disabled:opacity-50"
       aria-label="Usuń post"
-      title="Usuń post"
     >
       <Trash size={16} />
-      {isDeleting && <span className="ml-1">Usuwanie...</span>}
     </button>
   );
 }
