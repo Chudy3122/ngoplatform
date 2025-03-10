@@ -1,70 +1,29 @@
-// app/api/posts/[id]/route.ts
+// app/api/post-delete/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// Alternatywny endpoint do usuwania postów metodą POST
+export async function POST(req: NextRequest) {
   try {
-    const postId = parseInt(params.id);
+    // Pobierz ID posta z ciała żądania
+    const body = await req.json();
+    const { postId } = body;
     
-    if (isNaN(postId)) {
-      return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
+    console.log("POST request do usunięcia posta ID:", postId);
+    
+    if (!postId) {
+      console.log("Brak ID posta w żądaniu");
+      return NextResponse.json({ error: "Missing post ID" }, { status: 400 });
     }
-
-    const post = await prisma.post.findUnique({
-      where: { id: postId },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            surname: true,
-            img: true,
-          }
-        },
-        comments: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                surname: true,
-                img: true,
-              }
-            },
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        },
-        reactions: true,
-      }
-    });
-
-    if (!post) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    
+    const id = parseInt(postId);
+    
+    if (isNaN(id)) {
+      console.log("Nieprawidłowy format ID:", postId);
+      return NextResponse.json({ error: "Invalid post ID format" }, { status: 400 });
     }
-
-    return NextResponse.json(post);
-  } catch (error) {
-    console.error("Error fetching post:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch post" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  console.log("DELETE request dla posta ID:", params.id);
-  
-  try {
+    
     // Sprawdzenie uprawnień użytkownika
     const authData = await auth();
     const userId = authData.userId;
@@ -80,46 +39,39 @@ export async function DELETE(
     const isAdmin = role === "admin";
     
     console.log("User ID:", userId, "Rola:", role, "Admin:", isAdmin);
-
-    const postId = parseInt(params.id);
     
-    if (isNaN(postId)) {
-      console.log("Nieprawidłowy format ID:", params.id);
-      return NextResponse.json({ error: "Invalid post ID" }, { status: 400 });
-    }
-
     // Sprawdź czy post istnieje
     const post = await prisma.post.findUnique({
-      where: { id: postId },
+      where: { id },
     });
-
+    
     if (!post) {
-      console.log("Post nie znaleziony:", postId);
+      console.log("Post nie znaleziony:", id);
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
-
+    
     console.log("Znaleziony post:", post);
     console.log("Author ID:", post.authorId, "Current user ID:", userId);
-
+    
     // Admin może usuwać wszystkie posty, autor tylko swoje
     if (post.authorId !== userId && !isAdmin) {
       console.log("Brak uprawnień do usunięcia posta");
       return NextResponse.json({ error: "Unauthorized - only post owner or admin can delete" }, { status: 403 });
     }
-
+    
     console.log("Usuwanie powiązanych danych i posta...");
     // Usuń wszystkie powiązane dane
     await prisma.$transaction([
-      prisma.reaction.deleteMany({ where: { postId } }),
-      prisma.comment.deleteMany({ where: { postId } }),
-      prisma.post.delete({ where: { id: postId } })
+      prisma.reaction.deleteMany({ where: { postId: id } }),
+      prisma.comment.deleteMany({ where: { postId: id } }),
+      prisma.post.delete({ where: { id } })
     ]);
-
+    
     console.log("Post został pomyślnie usunięty");
     return NextResponse.json({ 
       success: true,
       message: "Post deleted successfully",
-      id: postId 
+      id
     });
   } catch (error) {
     console.error("Błąd usuwania posta:", error);

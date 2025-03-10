@@ -15,9 +15,8 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
       try {
         setIsDeleting(true);
         
-        // Dodajemy timestamp dla uniknięcia cachowania
-        const timestamp = new Date().getTime();
-        const response = await fetch(`/api/announcements?id=${id}&t=${timestamp}`, {
+        // Wywołanie endpointu w formacie /api/announcements/{id}
+        const response = await fetch(`/api/announcements/${id}`, {
           method: "DELETE",
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -27,7 +26,7 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
         });
         
         if (!response.ok) {
-          const data = await response.json();
+          const data = await response.json().catch(() => ({}));
           throw new Error(data.error || "Błąd usuwania ogłoszenia");
         }
 

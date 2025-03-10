@@ -19,33 +19,30 @@ export default function DeletePostButton({ postId, onPostDeleted }: DeletePostBu
     try {
       setIsDeleting(true);
       
-      // Dodajemy timestamp dla uniknięcia cachowania
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/api/posts?id=${postId}&t=${timestamp}`, {
-        method: "DELETE",
+      // Użyj alternatywnego endpointu, który używa metody POST zamiast DELETE
+      const response = await fetch('/api/post-delete', {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
-        }
+        },
+        body: JSON.stringify({ postId }),
       });
 
-      const result = await response.json();
-      
       if (!response.ok) {
-        throw new Error(result.error || "Failed to delete post");
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete post");
       }
 
       alert("Post został usunięty");
       
-      // Wywołaj callback jeśli istnieje
       if (onPostDeleted) {
         onPostDeleted();
       } else {
-        // W przeciwnym razie odśwież stronę
         window.location.reload();
       }
-      
     } catch (error) {
       console.error("Error deleting post:", error);
       alert(error instanceof Error ? error.message : "Error deleting post");
