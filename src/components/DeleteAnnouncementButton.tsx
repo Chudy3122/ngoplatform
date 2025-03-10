@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Trash } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface DeleteAnnouncementButtonProps {
   id: number;
@@ -10,14 +9,13 @@ interface DeleteAnnouncementButtonProps {
 
 const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
-  const router = useRouter();
 
   const handleDelete = async () => {
     if (confirm(`Czy na pewno chcesz usunąć to ogłoszenie?`)) {
       try {
         setIsDeleting(true);
         
-        // Dodajemy parametr timestamp, aby uniknąć cachowania żądania
+        // Dodajemy timestamp dla uniknięcia cachowania
         const timestamp = new Date().getTime();
         const response = await fetch(`/api/announcements?id=${id}&t=${timestamp}`, {
           method: "DELETE",
@@ -28,15 +26,12 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
           }
         });
         
-        const result = await response.json();
-        
         if (!response.ok) {
-          throw new Error(result.error || "Błąd usuwania ogłoszenia");
+          const data = await response.json();
+          throw new Error(data.error || "Błąd usuwania ogłoszenia");
         }
 
         alert("Ogłoszenie zostało usunięte");
-        
-        // Używamy twardego odświeżenia strony
         window.location.reload();
       } catch (error) {
         console.error("Błąd podczas usuwania:", error);

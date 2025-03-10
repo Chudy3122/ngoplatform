@@ -63,14 +63,14 @@ export async function DELETE(req: NextRequest) {
     }
     
     // Usunięcie ogłoszenia
-    const deleted = await prisma.announcement.delete({
+    await prisma.announcement.delete({
       where: { id }
     });
     
-    return NextResponse.json({ success: true, deleted });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Błąd usuwania ogłoszenia:", error);
-    // Sprawdźmy czy to błąd Prisma "Record not found"
+    // Sprawdź czy to błąd Prisma "Record not found"
     if (error instanceof Error && error.message.includes("Record to delete does not exist")) {
       return NextResponse.json({ error: "Ogłoszenie nie istnieje lub zostało już usunięte" }, { status: 404 });
     }
