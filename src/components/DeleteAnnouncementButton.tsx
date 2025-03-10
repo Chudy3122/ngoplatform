@@ -1,4 +1,3 @@
-// DeleteAnnouncementButton.tsx
 "use client";
 
 import { useState } from "react";
@@ -16,12 +15,13 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
       try {
         setIsDeleting(true);
         
-        const response = await fetch('/api/post-delete', {
-          method: 'POST',
+        // Użyjmy metody POST, która obsługuje ID posta jako parametr zapytania
+        const response = await fetch(`/api/posts?id=${id}`, {
+          method: 'DELETE',
           headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ postId: id }),
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
         });
         
         if (!response.ok) {
@@ -31,6 +31,7 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
         alert("Ogłoszenie zostało usunięte");
         window.location.reload();
       } catch (error) {
+        console.error("Błąd podczas usuwania:", error);
         alert("Nie udało się usunąć ogłoszenia");
       } finally {
         setIsDeleting(false);
