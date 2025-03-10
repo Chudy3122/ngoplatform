@@ -15,18 +15,21 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
       try {
         setIsDeleting(true);
         
-        // Wywołanie endpointu w formacie /api/announcements/{id}
-        const response = await fetch(`/api/announcements/${id}`, {
-          method: "DELETE",
+        // Używamy metody POST z alternatywnego endpointu
+        const response = await fetch('/api/post-delete', {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
-          }
+          },
+          body: JSON.stringify({ postId: id }),
         });
         
+        const data = await response.json().catch(() => ({}));
+        
         if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
           throw new Error(data.error || "Błąd usuwania ogłoszenia");
         }
 
@@ -49,6 +52,7 @@ const DeleteAnnouncementButton = ({ id }: DeleteAnnouncementButtonProps) => {
       aria-label="Usuń ogłoszenie"
     >
       <Trash size={16} />
+      {isDeleting && <span className="ml-1 text-xs">Usuwanie...</span>}
     </button>
   );
 };
