@@ -58,12 +58,18 @@ export default function PostList({ limit }: { limit?: number }) {
     }
 
     try {
-      const response = await fetch(`/api/posts/${postId}`, {
-        method: 'DELETE',
+      // Zamiast DELETE, użyj POST do dedykowanego endpointu
+      const response = await fetch('/api/delete-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ postId })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete post');
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete post');
       }
 
       // Odśwież listę postów
@@ -71,6 +77,7 @@ export default function PostList({ limit }: { limit?: number }) {
       
     } catch (error) {
       console.error('Error deleting post:', error);
+      alert(error instanceof Error ? error.message : 'Error deleting post');
     }
   };
 
@@ -137,7 +144,7 @@ export default function PostList({ limit }: { limit?: number }) {
               </div>
             </div>
             {/* Przycisk usuwania widoczny tylko dla autora */}
-            {user?.id === post.authorId && ( // zmiana z userId na user?.id
+            {user?.id === post.authorId && (
               <button
                 onClick={() => handleDeletePost(post.id)}
                 className="text-red-500 hover:text-red-700"
