@@ -42,6 +42,10 @@ interface FileShare {
   sharedToTeacherId?: string;
   sharedToStudentId?: string;
   sharedToParentId?: string;
+  sharedByAdmin?: User;
+  sharedByTeacher?: User;
+  sharedByStudent?: User;
+  sharedByParent?: User;
   sharedToAdmin?: User;
   sharedToTeacher?: User;
   sharedToStudent?: User;
@@ -84,8 +88,11 @@ const SharedResourcesPage = () => {
     }
   }, [t]);
 
-  const handleModalClose = useCallback(async () => {
+  const handleModalClose = useCallback(() => {
     setSelectedFile(null);
+  }, []);
+
+  const handleModalSuccess = useCallback(async () => {
     await fetchSharedFiles();
   }, [fetchSharedFiles]);
 
@@ -131,9 +138,36 @@ const SharedResourcesPage = () => {
 
   const handleDownload = useCallback(async (fileId: string, fileName: string) => {
     try {
-      const response = await fetch(`/api/files/${fileId}`);
-      if (!response.ok) throw new Error('Failed to download file');
+      // Upewnij się, że fileId jest poprawny
+      if (!fileId) {
+        toast.error('Invalid file ID');
+        return;
+      }
+
+      // Dodaj wskaźnik ładowania
+      toast.info('Starting download...');
       
+      const response = await fetch(`/api/files/${fileId}/download`, {
+        headers: {
+          'Accept': 'application/octet-stream',
+        }
+      });
+      
+      if (!response.ok) {
+        console.error('Download error:', response.status, response.statusText);
+        // Spróbuj pobrać bardziej szczegółowe informacje o błędzie
+        let errorDetails = '';
+        try {
+          const errorData = await response.json();
+          errorDetails = errorData.error || '';
+        } catch (e) {
+          // Ignoruj błędy parsowania JSON
+        }
+        
+        throw new Error(errorDetails || `Server returned ${response.status}`);
+      }
+      
+      // Utwórz URL i pobierz plik
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -141,14 +175,23 @@ const SharedResourcesPage = () => {
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success(t?.sharedResources?.downloadSuccess || 'File downloaded successfully');
+      
+      // Poczekaj chwilę przed usunięciem elementów
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      toast.success('File downloaded successfully');
     } catch (err) {
       console.error('Error downloading file:', err);
-      toast.error(t?.sharedResources?.downloadError || 'Failed to download file');
+      toast.error(
+        err instanceof Error && err.message 
+          ? `Failed to download file: ${err.message}` 
+          : 'Failed to download file'
+      );
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     const initializeUser = async () => {
@@ -246,14 +289,19 @@ const SharedResourcesPage = () => {
                 
                 const file = fileShare.file;
                 
-                // Określ kto udostępnił plik - zmiana deklaracji zmiennej na bardziej ogólny typ string
+                // Określ kto udostępnił plik
                 let sharedBy: string = t?.sharedResources?.unknownUser || 'Unknown user';
-
-                // Przypisanie wartości - teraz nie ma konfliktu typów
-                if (fileShare.sharedByAdminId) sharedBy = fileShare.sharedByAdminId;
-                if (fileShare.sharedByTeacherId) sharedBy = fileShare.sharedByTeacherId;
-                if (fileShare.sharedByStudentId) sharedBy = fileShare.sharedByStudentId;
-                if (fileShare.sharedByParentId) sharedBy = fileShare.sharedByParentId;
+                
+                // Próba znalezienia informacji o użytkowniku który udostępnił plik
+                if (fileShare.sharedByAdminId && fileShare.sharedByAdmin) {
+                  sharedBy = fileShare.sharedByAdmin.username || fileShare.sharedByAdmin.email || fileShare.sharedByAdminId;
+                } else if (fileShare.sharedByTeacherId && fileShare.sharedByTeacher) {
+                  sharedBy = fileShare.sharedByTeacher.username || fileShare.sharedByTeacher.email || fileShare.sharedByTeacherId;
+                } else if (fileShare.sharedByStudentId && fileShare.sharedByStudent) {
+                  sharedBy = fileShare.sharedByStudent.username || fileShare.sharedByStudent.email || fileShare.sharedByStudentId;
+                } else if (fileShare.sharedByParentId && fileShare.sharedByParent) {
+                  sharedBy = fileShare.sharedByParent.username || fileShare.sharedByParent.email || fileShare.sharedByParentId;
+                }
                 
                 return (
                   <div key={file.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-4">
@@ -290,7 +338,7 @@ const SharedResourcesPage = () => {
           fileName={selectedFile.name}
           isOpen={!!selectedFile}
           onClose={handleModalClose}
-          onSuccess={fetchSharedFiles}
+          onSuccess={handleModalSuccess}
         />
       )}
     </div>

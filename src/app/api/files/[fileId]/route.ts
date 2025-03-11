@@ -2,6 +2,71 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 
+export async function GET(
+  req: Request,
+  { params }: { params: { fileId: string } }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const fileId = params.fileId;
+    if (!fileId) {
+      return NextResponse.json({ error: "Missing file ID" }, { status: 400 });
+    }
+
+    console.log('Attempting to access file:', fileId, 'by user:', userId);
+
+    // Sprawdź czy użytkownik ma dostęp do pliku
+    const file = await prisma.libraryFile.findFirst({
+      where: {
+        id: fileId,
+        OR: [
+          // Użytkownik jest właścicielem pliku
+          { adminOwnerId: userId },
+          { teacherOwnerId: userId },
+          { studentOwnerId: userId },
+          { parentOwnerId: userId },
+          // Użytkownik ma udostępniony plik
+          {
+            shares: {
+              some: {
+                OR: [
+                  { sharedToAdminId: userId },
+                  { sharedToTeacherId: userId },
+                  { sharedToStudentId: userId },
+                  { sharedToParentId: userId }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    if (!file) {
+      return NextResponse.json({ error: "File not found or no access" }, { status: 404 });
+    }
+
+    // Zwróć metadane pliku (bez pełnych danych)
+    return NextResponse.json({
+      id: file.id,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      createdAt: file.createdAt
+    });
+  } catch (error) {
+    console.error("Error getting file:", error);
+    return NextResponse.json(
+      { error: "Failed to get file", details: String(error) },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   req: Request,
   { params }: { params: { fileId: string } }

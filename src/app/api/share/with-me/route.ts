@@ -35,7 +35,20 @@ export async function GET() {
     const sharedWithMe = await prisma.fileShare.findMany({
       where: whereCondition,
       include: {
-        file: true
+        file: true,
+        // Dodaj informacje o użytkownikach, którzy udostępnili plik
+        sharedByAdmin: {
+          select: { id: true, username: true, email: true }
+        },
+        sharedByTeacher: {
+          select: { id: true, username: true, email: true }
+        },
+        sharedByStudent: {
+          select: { id: true, username: true, email: true }
+        },
+        sharedByParent: {
+          select: { id: true, username: true, email: true }
+        }
       }
     });
 
