@@ -150,66 +150,15 @@ const SharedResourcesPage = () => {
       
       console.log(`Downloading file: ${fileId} (${fileName})`);
       
-      // Wykonaj zapytanie do API
-      const response = await fetch(`/api/files/${fileId}/download`, {
-        headers: {
-          'Accept': 'application/octet-stream',
-        }
-      });
+      // Bezpośrednie przekierowanie do endpointu download
+      // To podejście działa, ponieważ serwer obsługuje pobieranie
+      window.location.href = `/api/files/${fileId}/download`;
       
-      // Sprawdź, czy zapytanie się powiodło
-      if (!response.ok) {
-        console.error('Download error:', response.status, response.statusText);
-        
-        // Próba pobrania szczegółów błędu
-        let errorMessage = `Server returned ${response.status}`;
-        try {
-          const errorData = await response.json();
-          if (errorData.error) {
-            errorMessage = errorData.error;
-          }
-          console.error('Error details:', errorData);
-        } catch (e) {
-          // Jeśli odpowiedź nie jest JSONem, ignoruj
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      // Pobierz dane jako blob
-      const blob = await response.blob();
-      
-      // Logowanie dla debugowania
-      console.log('Received blob:', {
-        type: blob.type,
-        size: blob.size,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      // Utwórz URL i pobierz plik
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      
-      // Rozpocznij pobieranie
-      a.click();
-      
-      // Poczekaj chwilę przed usunięciem elementów
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
-      
-      toast.success('File downloaded successfully');
+      // Nie potrzebujemy własnego kodu pobierania, ponieważ przeglądarka obsłuży pobieranie
+      toast.success('File download started');
     } catch (err) {
-      console.error('Error downloading file:', err);
-      toast.error(
-        err instanceof Error && err.message 
-          ? `Failed to download file: ${err.message}` 
-          : 'Failed to download file'
-      );
+      console.error('Error initiating download:', err);
+      toast.error('Failed to initiate file download');
     }
   }, []);
 
