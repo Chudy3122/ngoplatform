@@ -46,12 +46,13 @@ interface FileShare {
   sharedToTeacher?: User;
   sharedToStudent?: User;
   sharedToParent?: User;
+  file?: SharedFile;
 }
 
 const SharedResourcesPage = () => {
   const t = useTranslations();
   const [sharedByMe, setSharedByMe] = useState<SharedFile[]>([]);
-  const [sharedWithMe, setSharedWithMe] = useState<SharedFile[]>([]);
+  const [sharedWithMe, setSharedWithMe] = useState<FileShare[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<{id: string, name: string} | null>(null);
@@ -237,34 +238,47 @@ const SharedResourcesPage = () => {
                 {t?.sharedResources?.noFilesSharedWithMe || "No files have been shared with you"}
               </div>
             ) : (
-              sharedWithMe.map((file) => (
-                <div key={file.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div>
-                        <h3 className="font-medium text-gray-900 truncate max-w-[200px]">
-                          {file.name}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {t?.sharedResources?.sharedBy || "Shared by"} {
-                            file.shares[0]?.sharedByAdminId || 
-                            file.shares[0]?.sharedByTeacherId || 
-                            file.shares[0]?.sharedByStudentId || 
-                            file.shares[0]?.sharedByParentId || (t?.sharedResources?.unknownUser || 'Unknown user')
-                          }
-                        </p>
+              sharedWithMe.map((fileShare) => {
+                // Sprawdź czy fileShare i fileShare.file istnieją
+                if (!fileShare || !fileShare.file) {
+                  return null;
+                }
+                
+                const file = fileShare.file;
+                
+                // Określ kto udostępnił plik - zmiana deklaracji zmiennej na bardziej ogólny typ string
+                let sharedBy: string = t?.sharedResources?.unknownUser || 'Unknown user';
+
+                // Przypisanie wartości - teraz nie ma konfliktu typów
+                if (fileShare.sharedByAdminId) sharedBy = fileShare.sharedByAdminId;
+                if (fileShare.sharedByTeacherId) sharedBy = fileShare.sharedByTeacherId;
+                if (fileShare.sharedByStudentId) sharedBy = fileShare.sharedByStudentId;
+                if (fileShare.sharedByParentId) sharedBy = fileShare.sharedByParentId;
+                
+                return (
+                  <div key={file.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div>
+                          <h3 className="font-medium text-gray-900 truncate max-w-[200px]">
+                            {file.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {t?.sharedResources?.sharedBy || "Shared by"} {sharedBy}
+                          </p>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleDownload(file.id, file.name)}
+                        className="inline-flex items-center p-2 text-gray-500 hover:text-gray-700"
+                        title={t?.sharedResources?.download || "Download"}
+                      >
+                        <Download className="w-5 h-5" />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleDownload(file.id, file.name)}
-                      className="inline-flex items-center p-2 text-gray-500 hover:text-gray-700"
-                      title={t?.sharedResources?.download || "Download"}
-                    >
-                      <Download className="w-5 h-5" />
-                    </button>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
