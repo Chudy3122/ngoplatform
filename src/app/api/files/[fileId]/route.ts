@@ -17,9 +17,9 @@ export async function GET(
       return NextResponse.json({ error: "Missing file ID" }, { status: 400 });
     }
 
-    console.log('Attempting to access file:', fileId, 'by user:', userId);
+    console.log('Attempting to download file:', fileId, 'by user:', userId);
 
-    // Sprawdź czy użytkownik ma dostęp do pliku
+    // Pobierz plik z pełnymi danymi (fileData)
     const file = await prisma.libraryFile.findFirst({
       where: {
         id: fileId,
@@ -43,100 +43,52 @@ export async function GET(
             }
           }
         ]
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        size: true,
+        fileData: true
       }
     });
 
     if (!file) {
+      console.log('File not found or user not authorized for download:', fileId, userId);
       return NextResponse.json({ error: "File not found or no access" }, { status: 404 });
     }
 
-    // Zwróć metadane pliku (bez pełnych danych)
-    return NextResponse.json({
+    console.log('File found:', {
       id: file.id,
       name: file.name,
       size: file.size,
       type: file.type,
-      createdAt: file.createdAt
+      hasData: !!file.fileData
     });
-  } catch (error) {
-    console.error("Error getting file:", error);
-    return NextResponse.json(
-      { error: "Failed to get file", details: String(error) },
-      { status: 500 }
-    );
-  }
-}
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: { fileId: string } }
-) {
-  try {
-    const session = await auth();
-    const userId = session?.userId;
+    // Sprawdź, czy plik ma dane
+    if (!file.fileData) {
+      console.log('File data is missing:', fileId);
+      return NextResponse.json({ error: "File data not found" }, { status: 404 });
+    }
     
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized - no user ID" }, 
-        { status: 401 }
-      );
-    }
+    // W schemacie Prisma pole fileData jest typu Bytes, więc powinno być buforem
+    const fileBuffer = Buffer.from(file.fileData);
+    
+    console.log('File buffer created with size:', fileBuffer.length);
+    
+    // Ustawienie nagłówków odpowiedzi
+    const headers = new Headers();
+    headers.set('Content-Type', file.type || 'application/octet-stream');
+    headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(file.name)}"`);
+    headers.set('Content-Length', fileBuffer.length.toString());
 
-    if (!params.fileId) {
-      console.error('No fileId provided in params:', params);
-      return NextResponse.json(
-        { error: "File ID is required" }, 
-        { status: 400 }
-      );
-    }
-
-    console.log('Attempting to delete file:', params.fileId, 'by user:', userId);
-
-    // Sprawdź, czy użytkownik jest właścicielem pliku
-    const file = await prisma.libraryFile.findFirst({
-      where: {
-        id: params.fileId,
-        OR: [
-          { adminOwnerId: userId },
-          { teacherOwnerId: userId },
-          { studentOwnerId: userId },
-          { parentOwnerId: userId }
-        ]
-      }
-    });
-
-    if (!file) {
-      console.log('File not found or user not authorized:', params.fileId, userId);
-      return NextResponse.json(
-        { error: "File not found or access denied" }, 
-        { status: 404 }
-      );
-    }
-
-    // Dodajemy transakcję dla spójności
-    await prisma.$transaction(async (prisma) => {
-      // Najpierw usuń udostępnienia
-      await prisma.fileShare.deleteMany({
-        where: {
-          fileId: params.fileId
-        }
-      });
-
-      // Następnie usuń sam plik
-      await prisma.libraryFile.delete({
-        where: {
-          id: params.fileId
-        }
-      });
-    });
-
-    console.log('Successfully deleted file:', params.fileId);
-    return NextResponse.json({ success: true });
-
+    console.log('Successfully prepared file for download:', fileId);
+    return new NextResponse(fileBuffer, { headers });
   } catch (error) {
-    console.error('Error in DELETE /api/files/[fileId]:', error);
+    console.error("Error downloading file:", error);
     return NextResponse.json(
-      { error: "Failed to delete file", details: error },
+      { error: "Failed to download file", details: String(error) },
       { status: 500 }
     );
   }

@@ -144,37 +144,56 @@ const SharedResourcesPage = () => {
         toast.error('Invalid file ID');
         return;
       }
-
+  
       // Dodaj wskaźnik ładowania
       toast.info('Starting download...');
       
+      console.log(`Downloading file: ${fileId} (${fileName})`);
+      
+      // Wykonaj zapytanie do API
       const response = await fetch(`/api/files/${fileId}/download`, {
         headers: {
           'Accept': 'application/octet-stream',
         }
       });
       
+      // Sprawdź, czy zapytanie się powiodło
       if (!response.ok) {
         console.error('Download error:', response.status, response.statusText);
-        // Spróbuj pobrać bardziej szczegółowe informacje o błędzie
-        let errorDetails = '';
+        
+        // Próba pobrania szczegółów błędu
+        let errorMessage = `Server returned ${response.status}`;
         try {
           const errorData = await response.json();
-          errorDetails = errorData.error || '';
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+          console.error('Error details:', errorData);
         } catch (e) {
-          // Ignoruj błędy parsowania JSON
+          // Jeśli odpowiedź nie jest JSONem, ignoruj
         }
         
-        throw new Error(errorDetails || `Server returned ${response.status}`);
+        throw new Error(errorMessage);
       }
       
-      // Utwórz URL i pobierz plik
+      // Pobierz dane jako blob
       const blob = await response.blob();
+      
+      // Logowanie dla debugowania
+      console.log('Received blob:', {
+        type: blob.type,
+        size: blob.size,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      // Utwórz URL i pobierz plik
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = fileName;
       document.body.appendChild(a);
+      
+      // Rozpocznij pobieranie
       a.click();
       
       // Poczekaj chwilę przed usunięciem elementów

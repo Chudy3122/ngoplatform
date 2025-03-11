@@ -19,7 +19,7 @@ export async function GET(
 
     console.log('Attempting to download file:', fileId, 'by user:', userId);
 
-    // Sprawdź czy użytkownik ma dostęp do pliku
+    // Pobierz plik z pełnymi danymi (fileData)
     const file = await prisma.libraryFile.findFirst({
       where: {
         id: fileId,
@@ -43,6 +43,13 @@ export async function GET(
             }
           }
         ]
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        size: true,
+        fileData: true
       }
     });
 
@@ -51,22 +58,24 @@ export async function GET(
       return NextResponse.json({ error: "File not found or no access" }, { status: 404 });
     }
 
+    console.log('File found:', {
+      id: file.id,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      hasData: !!file.fileData
+    });
+
     // Sprawdź, czy plik ma dane
     if (!file.fileData) {
       console.log('File data is missing:', fileId);
       return NextResponse.json({ error: "File data not found" }, { status: 404 });
     }
     
-    // Konwertuj dane pliku do odpowiedniego formatu
-    let fileBuffer: Buffer;
-    if (Buffer.isBuffer(file.fileData)) {
-      fileBuffer = file.fileData;
-    } else if (typeof file.fileData === 'string') {
-      fileBuffer = Buffer.from(file.fileData, 'base64');
-    } else {
-      console.error('Unsupported file data format:', typeof file.fileData);
-      return NextResponse.json({ error: "Unsupported file data format" }, { status: 500 });
-    }
+    // W schemacie Prisma pole fileData jest typu Bytes, więc powinno być buforem
+    const fileBuffer = Buffer.from(file.fileData);
+    
+    console.log('File buffer created with size:', fileBuffer.length);
     
     // Ustawienie nagłówków odpowiedzi
     const headers = new Headers();
