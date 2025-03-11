@@ -19,7 +19,7 @@ export async function GET(
 
     console.log('Attempting to download file:', fileId, 'by user:', userId);
 
-    // Pobierz plik z pełnymi danymi (fileData)
+    // Pobierz plik wraz z danymi
     const file = await prisma.libraryFile.findFirst({
       where: {
         id: fileId,
@@ -43,13 +43,6 @@ export async function GET(
             }
           }
         ]
-      },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        size: true,
-        fileData: true
       }
     });
 
@@ -72,10 +65,8 @@ export async function GET(
       return NextResponse.json({ error: "File data not found" }, { status: 404 });
     }
     
-    // W schemacie Prisma pole fileData jest typu Bytes, więc powinno być buforem
+    // Przygotuj dane pliku jako Buffer
     const fileBuffer = Buffer.from(file.fileData);
-    
-    console.log('File buffer created with size:', fileBuffer.length);
     
     // Ustawienie nagłówków odpowiedzi
     const headers = new Headers();
