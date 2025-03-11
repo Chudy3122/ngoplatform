@@ -36,7 +36,7 @@ export async function GET() {
       where: whereCondition,
       include: {
         file: true,
-        // Dodaj informacje o użytkownikach, którzy udostępnili plik
+        // Dodaj informacje o użytkownikach, którzy udostępnili plik - tylko istniejące pola
         sharedByAdmin: {
           select: { id: true, username: true, email: true }
         },

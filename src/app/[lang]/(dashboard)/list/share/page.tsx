@@ -24,8 +24,9 @@ interface SharedFile {
 
 interface User {
   id: string;
-  username: string;
+  username?: string;
   email?: string;
+  type?: 'admin' | 'teacher' | 'student' | 'parent';
 }
 
 interface FileShare {
@@ -307,6 +308,11 @@ const SharedResourcesPage = () => {
                   <div key={file.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
+                        {/* Inicjały użytkownika zamiast avatara */}
+                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                          {sharedBy.charAt(0).toUpperCase()}
+                        </div>
+                        
                         <div>
                           <h3 className="font-medium text-gray-900 truncate max-w-[200px]">
                             {file.name}

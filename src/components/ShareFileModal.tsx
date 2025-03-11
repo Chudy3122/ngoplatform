@@ -9,9 +9,9 @@ import { useTranslations } from "@/hooks/useTranslations";
 
 interface User {
   id: string;
-  username: string;
-  email: string;
-  type: 'admin' | 'teacher' | 'student' | 'parent';
+  username?: string;
+  email?: string;
+  type?: 'admin' | 'teacher' | 'student' | 'parent';
 }
 
 interface ShareFileModalProps {
@@ -213,9 +213,15 @@ export const ShareFileModal = ({
                   }}
                   className="rounded border-gray-300"
                 />
-                <div>
-                  <div className="font-medium">{user.username}</div>
-                  <div className="text-sm text-gray-500">{user.email}</div>
+                <div className="flex items-center space-x-2 flex-1">
+                  {/* Inicjały użytkownika zamiast avatara */}
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                    {(user.username?.charAt(0) || user.email?.charAt(0) || 'U').toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-medium">{user.username || 'Unnamed User'}</div>
+                    <div className="text-sm text-gray-500">{user.email || 'No email'}</div>
+                  </div>
                 </div>
               </div>
             )) : (

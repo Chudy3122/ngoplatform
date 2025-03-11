@@ -52,37 +52,30 @@ export async function GET(
     }
 
     // Sprawdź, czy plik ma dane
-    if (file.fileData) {
-      let fileBuffer;
-      if (Buffer.isBuffer(file.fileData)) {
-        fileBuffer = file.fileData;
-      } else if (typeof file.fileData === 'string') {
-        fileBuffer = Buffer.from(file.fileData, 'base64');
-      } else {
-        throw new Error('Unsupported file data format');
-      }
-      
-      // Tworzenie odpowiedzi z plikiem
-      const headers = new Headers();
-      headers.set('Content-Type', file.type || 'application/octet-stream');
-      headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(file.name)}"`);
-      headers.set('Content-Length', fileBuffer.length.toString());
-
-      console.log('Successfully prepared file for download:', fileId);
-      return new NextResponse(fileBuffer, { headers });
+    if (!file.fileData) {
+      console.log('File data is missing:', fileId);
+      return NextResponse.json({ error: "File data not found" }, { status: 404 });
     }
     
-    // Jeśli nie ma bezpośrednich danych pliku w rekordzie
-    // Możliwe, że musisz zaimplementować inny sposób pobierania pliku
-    // na podstawie swojej struktury danych
+    // Konwertuj dane pliku do odpowiedniego formatu
+    let fileBuffer: Buffer;
+    if (Buffer.isBuffer(file.fileData)) {
+      fileBuffer = file.fileData;
+    } else if (typeof file.fileData === 'string') {
+      fileBuffer = Buffer.from(file.fileData, 'base64');
+    } else {
+      console.error('Unsupported file data format:', typeof file.fileData);
+      return NextResponse.json({ error: "Unsupported file data format" }, { status: 500 });
+    }
     
-    // Przykład: Jeśli plik jest przechowywany w systemie plików
-    // const fileStream = fs.createReadStream(path.join(process.cwd(), 'uploads', file.path));
-    // return new NextResponse(fileStream);
-    
-    // Jeśli nie ma danych pliku
-    return NextResponse.json({ error: "File data not found in record" }, { status: 404 });
-    
+    // Ustawienie nagłówków odpowiedzi
+    const headers = new Headers();
+    headers.set('Content-Type', file.type || 'application/octet-stream');
+    headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(file.name)}"`);
+    headers.set('Content-Length', fileBuffer.length.toString());
+
+    console.log('Successfully prepared file for download:', fileId);
+    return new NextResponse(fileBuffer, { headers });
   } catch (error) {
     console.error("Error downloading file:", error);
     return NextResponse.json(
