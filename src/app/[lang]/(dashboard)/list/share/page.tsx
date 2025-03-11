@@ -150,15 +150,46 @@ const SharedResourcesPage = () => {
       
       console.log(`Downloading file: ${fileId} (${fileName})`);
       
-      // Bezpośrednie przekierowanie do endpointu download
-      // To podejście działa, ponieważ serwer obsługuje pobieranie
-      window.location.href = `/api/files/${fileId}/download`;
+      // Użyj ścieżki względnej zamiast pełnego URL
+      const response = await fetch(`/api/files/${fileId}/download`, {
+        headers: {
+          'Accept': 'application/octet-stream',
+        }
+      });
       
-      // Nie potrzebujemy własnego kodu pobierania, ponieważ przeglądarka obsłuży pobieranie
-      toast.success('File download started');
+      // Sprawdź, czy zapytanie się powiodło
+      if (!response.ok) {
+        console.error('Download error:', response.status, response.statusText);
+        throw new Error(`Server returned ${response.status}`);
+      }
+      
+      // Pobierz dane jako blob
+      const blob = await response.blob();
+      
+      // Utwórz URL i pobierz plik
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      
+      // Rozpocznij pobieranie
+      a.click();
+      
+      // Poczekaj chwilę przed usunięciem elementów
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      toast.success('File downloaded successfully');
     } catch (err) {
-      console.error('Error initiating download:', err);
-      toast.error('Failed to initiate file download');
+      console.error('Error downloading file:', err);
+      toast.error(
+        err instanceof Error && err.message 
+          ? `Failed to download file: ${err.message}` 
+          : 'Failed to download file'
+      );
     }
   }, []);
 
