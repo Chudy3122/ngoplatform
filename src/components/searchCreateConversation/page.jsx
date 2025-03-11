@@ -75,7 +75,6 @@ const SearchCreateConversation = ({ onConversationCreated, currentChat }) => {
               />
               <div className="user-info">
                 <span className="username">{result.displayName}</span>
-                <span className="role">{result.role.toLowerCase()}</span>
               </div>
               <button
                 onClick={() => handleCreateConversation(result)}
