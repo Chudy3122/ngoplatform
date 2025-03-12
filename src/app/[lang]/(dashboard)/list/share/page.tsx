@@ -137,8 +137,22 @@ const SharedResourcesPage = () => {
     }
   }, [fetchSharedFiles, t]);
 
-  const handleDownload = useCallback((fileId: string, fileName: string) => {
-    window.location.href = `/api/files/${fileId}/download`;
+  const handleDownload = useCallback(async (fileId: string, fileName: string) => {
+    try {
+      // Upewnij się, że fileId jest poprawny
+      if (!fileId) {
+        toast.error('Invalid file ID');
+        return;
+      }
+  
+      // Bezpośrednio otwórz link do pobrania w nowej karcie
+      window.open(`/api/files/${fileId}/download`, '_blank');
+      
+      toast.success('Download initiated. Check your downloads folder if the file does not start downloading automatically.');
+    } catch (err) {
+      console.error('Error initiating download:', err);
+      toast.error('Failed to initiate file download');
+    }
   }, []);
 
   useEffect(() => {
