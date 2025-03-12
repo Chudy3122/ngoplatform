@@ -1,4 +1,4 @@
-// app/api/firebase-proxy/route.ts (zaktualizowany z lepszym debugowaniem)
+// app/api/firebase-proxy/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import * as admin from 'firebase-admin';
@@ -6,14 +6,23 @@ import * as admin from 'firebase-admin';
 // Inicjalizacja Firebase Admin SDK (jeśli jeszcze nie zainicjalizowano)
 if (!admin.apps.length) {
   try {
+    // Pobierz nazwę bucketa z zmiennych środowiskowych
+    const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    
+    if (!storageBucket) {
+      console.error('Firebase storage bucket name not specified in environment variables');
+    }
+    
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       }),
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      storageBucket: storageBucket // Jawnie przekaż nazwę bucketa
     });
+    
+    console.log(`Firebase Admin initialized with bucket: ${storageBucket}`);
   } catch (error) {
     console.error('Firebase admin initialization error', error);
   }
@@ -41,11 +50,26 @@ export async function GET(request: NextRequest) {
     
     console.log(`Firebase proxy: Attempting to proxy file: ${filePath} for user ${userId}`);
     
-    // Alternatywne podejście: użyj getDownloadURL z Admin SDK
+    // Upewnij się, że nazwa bucketa jest ustawiona
+    const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+    if (!storageBucket) {
+      console.error('Firebase storage bucket name is missing');
+      return NextResponse.json({ 
+        error: "Configuration error: Storage bucket not specified" 
+      }, { status: 500 });
+    }
+    
+    // Pobierz referencję do bucketa jawnie używając nazwy
+    const bucket = admin.storage().bucket(storageBucket);
+    console.log(`Firebase proxy: Using bucket: ${bucket.name}`);
+    
     try {
-      // Uzyskaj dostęp do Storage przez Admin SDK
-      const bucket = admin.storage().bucket();
-      console.log(`Firebase proxy: Accessing bucket: ${bucket.name}`);
+      // Sprawdź czy plik istnieje
+      const [exists] = await bucket.file(filePath).exists();
+      if (!exists) {
+        console.log(`Firebase proxy: File not found: ${filePath}`);
+        return NextResponse.json({ error: "File not found" }, { status: 404 });
+      }
       
       // Pobierz plik
       const [fileBuffer] = await bucket.file(filePath).download();
@@ -53,11 +77,12 @@ export async function GET(request: NextRequest) {
       
       // Pobierz metadane pliku
       const [metadata] = await bucket.file(filePath).getMetadata();
-      console.log(`Firebase proxy: File metadata:`, metadata.contentType);
+      const contentType = metadata.contentType || 'application/octet-stream';
+      console.log(`Firebase proxy: File metadata:`, contentType);
       
       // Ustaw nagłówki odpowiedzi
       const headers = new Headers();
-      headers.set('Content-Type', metadata.contentType || 'application/octet-stream');
+      headers.set('Content-Type', contentType);
       
       // Wyciągnij nazwę pliku z ścieżki
       const fileName = filePath.split('/').pop() || 'file';
@@ -67,44 +92,22 @@ export async function GET(request: NextRequest) {
       
       console.log(`Firebase proxy: Returning file with name "${decodedFileName}"`);
       return new NextResponse(fileBuffer, { headers });
-    } catch (storageError) {
-      console.error("Firebase proxy: Storage error", storageError);
-      
-      // Spróbuj alternatywne podejście - pobranie publicznego URL i przekierowanie
+    } catch (downloadError) {
+      console.error("Firebase proxy: Error downloading file", downloadError);
+
+      // Alternatywne podejście - podpisany URL
       try {
-        console.log("Firebase proxy: Trying alternative approach");
-        const [signedUrl] = await admin.storage().bucket().file(filePath).getSignedUrl({
+        console.log("Firebase proxy: Trying alternative approach with signed URL");
+        const [signedUrl] = await bucket.file(filePath).getSignedUrl({
           action: 'read',
-          expires: Date.now() + 5 * 60 * 1000, // 5 minut
+          expires: Date.now() + 15 * 60 * 1000, // 15 minut
         });
         
-        console.log(`Firebase proxy: Generated signed URL: ${signedUrl.substring(0, 100)}...`);
-        
-        // Pobierz plik przez fetch
-        const response = await fetch(signedUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch file: ${response.statusText}`);
-        }
-        
-        const contentType = response.headers.get('content-type') || 'application/octet-stream';
-        const arrayBuffer = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        
-        // Ustaw nagłówki odpowiedzi
-        const headers = new Headers();
-        headers.set('Content-Type', contentType);
-        
-        // Wyciągnij nazwę pliku z ścieżki
-        const fileName = filePath.split('/').pop() || 'file';
-        const decodedFileName = decodeURIComponent(fileName);
-        headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(decodedFileName)}"`);
-        headers.set('Content-Length', buffer.length.toString());
-        
-        console.log(`Firebase proxy: Returning file with name "${decodedFileName}" via fetch`);
-        return new NextResponse(buffer, { headers });
-      } catch (alternativeError) {
-        console.error("Firebase proxy: Alternative approach failed", alternativeError);
-        throw alternativeError; // Przekaż błąd dalej
+        // Przekieruj zamiast proksowania
+        return NextResponse.redirect(signedUrl);
+      } catch (urlError) {
+        console.error("Firebase proxy: Signed URL approach failed", urlError);
+        throw urlError;
       }
     }
   } catch (error) {
