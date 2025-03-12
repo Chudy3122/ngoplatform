@@ -145,10 +145,23 @@ const SharedResourcesPage = () => {
         return;
       }
   
-      // Utwórz tymczasowy link i kliknij go
+      toast.info('Starting download...');
+      
+      // Tworzymy bezwzględną ścieżkę do pliku z uwzględnieniem aktualnej lokalizacji
+      const currentPath = window.location.pathname;
+      // Wyciągamy język (pl) z ścieżki jeśli istnieje
+      const langMatch = currentPath.match(/^\/([a-z]{2})\//);
+      const langPrefix = langMatch ? `/${langMatch[1]}` : '';
+      
+      // Budujemy ścieżkę z uwzględnieniem prefiksu językowego
+      const downloadUrl = `${langPrefix}/api/files/${fileId}/download`;
+      
+      console.log(`Attempting to download file from: ${downloadUrl}`);
+      
+      // Tworzymy element <a> do pobierania
       const a = document.createElement('a');
-      a.href = `/api/files/${fileId}/download`;
-      a.download = fileName; // To podpowiada przeglądarce, aby pobrać plik zamiast otwierać go
+      a.href = downloadUrl;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
