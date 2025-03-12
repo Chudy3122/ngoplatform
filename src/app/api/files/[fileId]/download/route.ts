@@ -1,3 +1,4 @@
+// api/files/[fileId]/download/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
@@ -17,9 +18,9 @@ export async function GET(
       return NextResponse.json({ error: "Missing file ID" }, { status: 400 });
     }
 
-    console.log('Attempting to download file:', fileId, 'by user:', userId);
+    console.log(`API: Attempting to download file ${fileId} by user ${userId}`);
 
-    // Pobierz plik wraz z danymi
+    // Pobierz plik wraz z danymi - jawnie wybierz fileData
     const file = await prisma.libraryFile.findFirst({
       where: {
         id: fileId,
@@ -43,41 +44,50 @@ export async function GET(
             }
           }
         ]
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        size: true,
+        fileData: true
       }
     });
 
     if (!file) {
-      console.log('File not found or user not authorized for download:', fileId, userId);
+      console.log(`API: File ${fileId} not found or user ${userId} has no access`);
       return NextResponse.json({ error: "File not found or no access" }, { status: 404 });
     }
 
-    console.log('File found:', {
-      id: file.id,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      hasData: !!file.fileData
-    });
+    console.log(`API: File ${fileId} found, has fileData: ${!!file.fileData}`);
 
     // Sprawdź, czy plik ma dane
     if (!file.fileData) {
-      console.log('File data is missing:', fileId);
+      console.log(`API: File ${fileId} has no data`);
       return NextResponse.json({ error: "File data not found" }, { status: 404 });
     }
     
+    console.log(`API: File data type: ${typeof file.fileData}, size: ${file.size} bytes`);
+    
     // Przygotuj dane pliku jako Buffer
     const fileBuffer = Buffer.from(file.fileData);
+    
+    console.log(`API: Created buffer with size: ${fileBuffer.length} bytes`);
     
     // Ustawienie nagłówków odpowiedzi
     const headers = new Headers();
     headers.set('Content-Type', file.type || 'application/octet-stream');
     headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(file.name)}"`);
     headers.set('Content-Length', fileBuffer.length.toString());
-
-    console.log('Successfully prepared file for download:', fileId);
+    
+    // Dodaj nagłówki CORS
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Access-Control-Allow-Methods', 'GET');
+    
+    console.log(`API: Headers set, returning file with content type: ${file.type}`);
     return new NextResponse(fileBuffer, { headers });
   } catch (error) {
-    console.error("Error downloading file:", error);
+    console.error(`API: Error downloading file: ${error}`);
     return NextResponse.json(
       { error: "Failed to download file", details: String(error) },
       { status: 500 }

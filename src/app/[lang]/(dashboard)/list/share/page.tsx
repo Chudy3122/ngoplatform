@@ -139,7 +139,6 @@ const SharedResourcesPage = () => {
 
   const handleDownload = useCallback(async (fileId: string, fileName: string) => {
     try {
-      // Upewnij się, że fileId jest poprawny
       if (!fileId) {
         toast.error('Invalid file ID');
         return;
@@ -147,29 +146,66 @@ const SharedResourcesPage = () => {
   
       toast.info('Starting download...');
       
-      // Tworzymy bezwzględną ścieżkę do pliku z uwzględnieniem aktualnej lokalizacji
-      const currentPath = window.location.pathname;
-      // Wyciągamy język (pl) z ścieżki jeśli istnieje
-      const langMatch = currentPath.match(/^\/([a-z]{2})\//);
-      const langPrefix = langMatch ? `/${langMatch[1]}` : '';
+      // Pobierz plik za pomocą Fetch API
+      const response = await fetch(`/api/files/${fileId}/download`);
       
-      // Budujemy ścieżkę z uwzględnieniem prefiksu językowego
-      const downloadUrl = `${langPrefix}/api/files/${fileId}/download`;
+      if (!response.ok) {
+        console.error('Download error:', {
+          status: response.status,
+          statusText: response.statusText
+        });
+        
+        // Próba pobrania informacji o błędzie
+        let errorMessage = `Server returned ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.error) {
+            errorMessage = errorData.error;
+          }
+          console.error('Error details:', errorData);
+        } catch (e) {
+          // Ignoruj błąd parsowania JSON
+        }
+        
+        throw new Error(errorMessage);
+      }
       
-      console.log(`Attempting to download file from: ${downloadUrl}`);
+      // Sprawdź nagłówki odpowiedzi
+      console.log('Response headers:', 
+        Object.fromEntries(response.headers.entries())
+      );
       
-      // Tworzymy element <a> do pobierania
+      // Pobierz dane jako blob
+      const blob = await response.blob();
+      console.log('Blob details:', {
+        size: blob.size,
+        type: blob.type
+      });
+      
+      if (blob.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
+      
+      // Utwórz URL i pobierz plik
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = downloadUrl;
+      a.href = url;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       
-      toast.success('Download started');
+      // Poczekaj chwilę przed usunięciem elementów
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      toast.success('File downloaded successfully');
     } catch (err) {
-      console.error('Error initiating download:', err);
-      toast.error('Failed to initiate file download');
+      console.error('Error downloading file:', err);
+      toast.error(
+        err instanceof Error ? `Failed to download file: ${err.message}` : 'Failed to download file'
+      );
     }
   }, []);
 
