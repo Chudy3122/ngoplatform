@@ -145,10 +145,15 @@ const SharedResourcesPage = () => {
         return;
       }
   
-      // Bezpośrednio otwórz link do pobrania w nowej karcie
-      window.open(`/api/files/${fileId}/download`, '_blank');
+      // Utwórz tymczasowy link i kliknij go
+      const a = document.createElement('a');
+      a.href = `/api/files/${fileId}/download`;
+      a.download = fileName; // To podpowiada przeglądarce, aby pobrać plik zamiast otwierać go
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       
-      toast.success('Download initiated. Check your downloads folder if the file does not start downloading automatically.');
+      toast.success('Download started');
     } catch (err) {
       console.error('Error initiating download:', err);
       toast.error('Failed to initiate file download');
