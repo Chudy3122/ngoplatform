@@ -324,26 +324,20 @@ export default function FileStorage() {
     }
   };
 
-  const handleDownload = async (fileUrl: string, fileName: string) => {
+  const handleDownload = async (fileUrl: string, fileName: string, filePath: string) => {
     try {
-      const token = await getFirebaseToken(user?.id!);
-      const response = await fetch(fileUrl, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Użyj endpointu proxy zamiast bezpośredniego URL Firebase
+      const proxyUrl = `/api/firebase-proxy?path=${encodeURIComponent(filePath)}`;
       
-      if (!response.ok) throw new Error('Download failed');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Utwórz link do pobrania
       const a = document.createElement('a');
-      a.href = url;
+      a.href = proxyUrl;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      
+      toast.success('File download started');
     } catch (err) {
       console.error("Download error:", err);
       setError(`Error downloading file: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -759,7 +753,7 @@ return (
               <div className="flex gap-2">
                 <button
                   className="text-gray-400 hover:text-gray-600"
-                  onClick={() => handleDownload(file.url, file.name)}
+                  onClick={() => handleDownload(file.url, file.name, file.path)}
                 >
                   <Download size={16} />
                 </button>
@@ -800,7 +794,7 @@ return (
               <div className="flex gap-2">
                 <button
                   className="text-gray-400 hover:text-gray-600"
-                  onClick={() => handleDownload(file.url, file.name)}
+                  onClick={() => handleDownload(file.url, file.name, file.path)}
                 >
                   <Download size={16} />
                 </button>
