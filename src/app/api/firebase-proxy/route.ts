@@ -1,4 +1,4 @@
-// app/api/firebase-proxy/route.ts
+// app/api/firebase-proxy/route.ts (zaktualizowany z lepszym debugowaniem)
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import * as admin from 'firebase-admin';
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const { userId } = auth;
     
     if (!userId) {
+      console.log("Firebase proxy: User not authenticated");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -34,42 +35,80 @@ export async function GET(request: NextRequest) {
     const filePath = searchParams.get("path");
     
     if (!filePath) {
+      console.log("Firebase proxy: No file path provided");
       return NextResponse.json({ error: "No file path provided" }, { status: 400 });
     }
     
-    console.log(`Server: Attempting to proxy file: ${filePath}`);
+    console.log(`Firebase proxy: Attempting to proxy file: ${filePath} for user ${userId}`);
     
-    // Uzyskaj dostęp do Storage przez Admin SDK
-    const bucket = admin.storage().bucket();
-    const file = bucket.file(filePath);
-    
-    // Sprawdź, czy plik istnieje
-    const [exists] = await file.exists();
-    if (!exists) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
+    // Alternatywne podejście: użyj getDownloadURL z Admin SDK
+    try {
+      // Uzyskaj dostęp do Storage przez Admin SDK
+      const bucket = admin.storage().bucket();
+      console.log(`Firebase proxy: Accessing bucket: ${bucket.name}`);
+      
+      // Pobierz plik
+      const [fileBuffer] = await bucket.file(filePath).download();
+      console.log(`Firebase proxy: File downloaded, size: ${fileBuffer.length} bytes`);
+      
+      // Pobierz metadane pliku
+      const [metadata] = await bucket.file(filePath).getMetadata();
+      console.log(`Firebase proxy: File metadata:`, metadata.contentType);
+      
+      // Ustaw nagłówki odpowiedzi
+      const headers = new Headers();
+      headers.set('Content-Type', metadata.contentType || 'application/octet-stream');
+      
+      // Wyciągnij nazwę pliku z ścieżki
+      const fileName = filePath.split('/').pop() || 'file';
+      const decodedFileName = decodeURIComponent(fileName);
+      headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(decodedFileName)}"`);
+      headers.set('Content-Length', fileBuffer.length.toString());
+      
+      console.log(`Firebase proxy: Returning file with name "${decodedFileName}"`);
+      return new NextResponse(fileBuffer, { headers });
+    } catch (storageError) {
+      console.error("Firebase proxy: Storage error", storageError);
+      
+      // Spróbuj alternatywne podejście - pobranie publicznego URL i przekierowanie
+      try {
+        console.log("Firebase proxy: Trying alternative approach");
+        const [signedUrl] = await admin.storage().bucket().file(filePath).getSignedUrl({
+          action: 'read',
+          expires: Date.now() + 5 * 60 * 1000, // 5 minut
+        });
+        
+        console.log(`Firebase proxy: Generated signed URL: ${signedUrl.substring(0, 100)}...`);
+        
+        // Pobierz plik przez fetch
+        const response = await fetch(signedUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${response.statusText}`);
+        }
+        
+        const contentType = response.headers.get('content-type') || 'application/octet-stream';
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        
+        // Ustaw nagłówki odpowiedzi
+        const headers = new Headers();
+        headers.set('Content-Type', contentType);
+        
+        // Wyciągnij nazwę pliku z ścieżki
+        const fileName = filePath.split('/').pop() || 'file';
+        const decodedFileName = decodeURIComponent(fileName);
+        headers.set('Content-Disposition', `attachment; filename="${encodeURIComponent(decodedFileName)}"`);
+        headers.set('Content-Length', buffer.length.toString());
+        
+        console.log(`Firebase proxy: Returning file with name "${decodedFileName}" via fetch`);
+        return new NextResponse(buffer, { headers });
+      } catch (alternativeError) {
+        console.error("Firebase proxy: Alternative approach failed", alternativeError);
+        throw alternativeError; // Przekaż błąd dalej
+      }
     }
-    
-    // Pobierz metadane pliku
-    const [metadata] = await file.getMetadata();
-    const contentType = metadata.contentType || 'application/octet-stream';
-    
-    // Pobierz nazwę pliku
-    const fileName = filePath.split("/").pop() || "download";
-    const decodedFileName = decodeURIComponent(fileName);
-    
-    // Utwórz strumień do pobierania pliku
-    const [fileContent] = await file.download();
-    
-    // Ustaw nagłówki odpowiedzi
-    const headers = new Headers();
-    headers.set("Content-Type", contentType);
-    headers.set("Content-Disposition", `attachment; filename="${encodeURIComponent(decodedFileName)}"`);
-    headers.set("Content-Length", fileContent.length.toString());
-    
-    // Zwróć dane pliku
-    return new NextResponse(fileContent, { headers });
   } catch (error) {
-    console.error("Firebase proxy error:", error);
+    console.error("Firebase proxy: Error", error);
     return NextResponse.json(
       { error: "Failed to proxy file", details: String(error) },
       { status: 500 }
