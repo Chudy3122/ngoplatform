@@ -139,16 +139,21 @@ const SharedResourcesPage = () => {
 
   const handleDownload = useCallback(async (fileId: string, fileName: string) => {
     try {
-      // Upewnij się, że fileId jest poprawny
       if (!fileId) {
         toast.error('Invalid file ID');
         return;
       }
   
-      // Utwórz tymczasowy link i kliknij go
+      toast.info('Starting download...');
+      
+      // Użyj prostszego endpointu z parametrem query string
+      const downloadUrl = `/api/download-file?fileId=${encodeURIComponent(fileId)}`;
+      
+      console.log(`Attempting to download file from: ${downloadUrl}`);
+      
       const a = document.createElement('a');
-      a.href = `/api/files/${fileId}/download`;
-      a.download = fileName; // To podpowiada przeglądarce, aby pobrać plik zamiast otwierać go
+      a.href = downloadUrl;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
