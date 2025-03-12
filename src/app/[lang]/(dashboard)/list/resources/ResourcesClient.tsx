@@ -82,9 +82,9 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
 
   const handleDownload = async (file: ResourceFile) => {
     try {
-      const response = await fetch(`/api/resources/${file.id}/download`);
+      const response = await fetch(`/api/download-resource?id=${encodeURIComponent(file.id)}`);
       if (!response.ok) throw new Error('Download failed');
-
+  
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
