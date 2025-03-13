@@ -451,43 +451,71 @@ const TodoList = () => {
     };
 
     const handleDragEnd = async (result: DndDropResult) => {
-
         console.log('handleDragEnd result:', result);
-
+    
         const { destination, source, draggableId } = result;
     
         // Jeśli nie ma miejsca docelowego lub jest to to samo miejsce
         if (!destination || 
             (destination.droppableId === source.droppableId && 
              destination.index === source.index)) {
-                console.log('No destination');
+                console.log('No destination or same position');
             return;
         }
         
         console.log('Source:', source);
         console.log('Destination:', destination);
         console.log('DraggableId:', draggableId);
-
+    
         const sourceColumn = columns.find(col => col.id === source.droppableId);
         const destColumn = columns.find(col => col.id === destination.droppableId);
         
-        if (!sourceColumn || !destColumn) return;
+        if (!sourceColumn || !destColumn) {
+            console.log('Source or destination column not found');
+            return;
+        }
     
-        const task = sourceColumn.tasks.find(t => String(t.id) === draggableId);
-    if (!task) return;
-
-    try {
-        if (source.droppableId !== destination.droppableId) {
-            const response = await axios.patch(`/api/todos/${draggableId}`, {
-                ...task,
-                status: destination.droppableId
-            });
-                const updatedTask = response.data;
+        // Znajdź zadanie po ID
+        const taskId = parseInt(draggableId);
+        if (isNaN(taskId)) {
+            console.log('Invalid task ID:', draggableId);
+            return;
+        }
     
+        const task = sourceColumn.tasks.find(t => t.id === taskId);
+        if (!task) {
+            console.log('Task not found:', taskId);
+            return;
+        }
+    
+        try {
+            if (source.droppableId !== destination.droppableId) {
+                // Aktualizuj status zadania w bazie danych
+                console.log(`Updating task ${taskId} status to ${destination.droppableId}`);
+                
+                const response = await fetch(`/api/todos/${taskId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ...task,
+                        status: destination.droppableId
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server responded with status: ${response.status}`);
+                }
+                
+                const updatedTask = await response.json();
+                console.log('Task updated successfully:', updatedTask);
+    
+                // Aktualizuj stan lokalny
                 setColumns(columns.map(column => {
                     // Usuń z kolumny źródłowej
                     if (column.id === source.droppableId) {
-                        const updatedTasks = column.tasks.filter(t => t.id !== parseInt(draggableId));
+                        const updatedTasks = column.tasks.filter(t => t.id !== taskId);
                         return {
                             ...column,
                             title: updateColumnTitle({ ...column, tasks: updatedTasks }),
