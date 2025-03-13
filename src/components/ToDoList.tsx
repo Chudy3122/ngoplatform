@@ -444,8 +444,9 @@ const TodoList = () => {
 
     const deleteTask = async (columnId: ColumnId, taskId: number) => {
         try {
-            await axios.delete(`/api/todos/${taskId}`);
-
+            // Use the new delete endpoint with POST method
+            await axios.post('/api/todos/delete', { taskId });
+    
             setColumns(columns.map(column => {
                 if (column.id === columnId) {
                     const updatedTasks = column.tasks.filter(task => task.id !== taskId);
