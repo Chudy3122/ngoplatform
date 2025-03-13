@@ -409,13 +409,13 @@ const TodoList = () => {
         
         const task = sourceColumn.tasks.find(t => t.id === taskId);
         if (!task) return;
-
+    
         try {
-            const response = await axios.patch(`/api/todos/${taskId}`, {
-                ...task,
-                status: targetColumnId
+            const response = await axios.post('/api/todos/move', {
+                taskId: taskId,
+                newStatus: targetColumnId
             });
-
+    
             const updatedTask = response.data;
             
             setColumns(columns.map(column => {
@@ -464,7 +464,7 @@ const TodoList = () => {
 
     const handleDragEnd = async (result: DndDropResult) => {
         console.log('handleDragEnd result:', result);
-        
+    
         const { destination, source, draggableId } = result;
     
         // If there's no destination or it's the same position
@@ -502,13 +502,12 @@ const TodoList = () => {
     
         try {
             if (source.droppableId !== destination.droppableId) {
-                // Update task status in database
+                // Update task status in database using the dedicated move endpoint
                 console.log(`Updating task ${taskId} status to ${destination.droppableId}`);
                 
-                // Use axios consistently instead of fetch
-                const response = await axios.patch(`/api/todos/${taskId}`, {
-                    ...task,
-                    status: destination.droppableId
+                const response = await axios.post('/api/todos/move', {
+                    taskId: taskId,
+                    newStatus: destination.droppableId
                 });
                 
                 const updatedTask = response.data;
