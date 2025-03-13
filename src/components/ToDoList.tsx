@@ -307,38 +307,50 @@ const TodoList = () => {
         if (!newTask.content.trim() || !user?.id) return;
         
         try {
-            const response = await axios.post('/api/todos', {
-                content: newTask.content,
-                description: newTask.description,
-                startDate: newTask.startDate,
-                dueDate: newTask.dueDate,
-                status: columnId,
-                userId: user.id
-            });
-
-            const task = response.data;
-
-            setColumns(columns.map(column => {
-                if (column.id === columnId) {
-                    const updatedTasks = [...column.tasks, task];
-                    return {
-                        ...column,
-                        title: updateColumnTitle({ ...column, tasks: updatedTasks }),
-                        tasks: updatedTasks
-                    };
-                }
-                return column;
-            }));
-            
-            setNewTask({
-                content: '',
-                description: '',
-                startDate: '',
-                dueDate: ''
-            });
-            setIsModalOpen(false);
+          const response = await fetch('/api/todos', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              content: newTask.content,
+              description: newTask.description,
+              startDate: newTask.startDate,
+              dueDate: newTask.dueDate,
+              status: columnId,
+              userId: user.id
+            })
+          });
+      
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Add task error:', response.status, errorText);
+            throw new Error(`Failed to add task: ${response.status} ${errorText}`);
+          }
+      
+          const task = await response.json();
+      
+          setColumns(columns.map(column => {
+            if (column.id === columnId) {
+              const updatedTasks = [...column.tasks, task];
+              return {
+                ...column,
+                title: updateColumnTitle({ ...column, tasks: updatedTasks }),
+                tasks: updatedTasks
+              };
+            }
+            return column;
+          }));
+          
+          setNewTask({
+            content: '',
+            description: '',
+            startDate: '',
+            dueDate: ''
+          });
+          setIsModalOpen(false);
         } catch (error) {
-            console.error('Error adding task:', error);
+          console.error('Error adding task:', error);
         }
     };
 
