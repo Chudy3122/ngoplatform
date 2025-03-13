@@ -464,14 +464,14 @@ const TodoList = () => {
 
     const handleDragEnd = async (result: DndDropResult) => {
         console.log('handleDragEnd result:', result);
-    
+        
         const { destination, source, draggableId } = result;
     
-        // Jeśli nie ma miejsca docelowego lub jest to to samo miejsce
+        // If there's no destination or it's the same position
         if (!destination || 
             (destination.droppableId === source.droppableId && 
              destination.index === source.index)) {
-                console.log('No destination or same position');
+            console.log('No destination or same position');
             return;
         }
         
@@ -487,7 +487,7 @@ const TodoList = () => {
             return;
         }
     
-        // Znajdź zadanie po ID
+        // Find the task by ID
         const taskId = parseInt(draggableId);
         if (isNaN(taskId)) {
             console.log('Invalid task ID:', draggableId);
@@ -502,30 +502,21 @@ const TodoList = () => {
     
         try {
             if (source.droppableId !== destination.droppableId) {
-                // Aktualizuj status zadania w bazie danych
+                // Update task status in database
                 console.log(`Updating task ${taskId} status to ${destination.droppableId}`);
                 
-                const response = await fetch(`/api/todos/${taskId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        ...task,
-                        status: destination.droppableId
-                    })
+                // Use axios consistently instead of fetch
+                const response = await axios.patch(`/api/todos/${taskId}`, {
+                    ...task,
+                    status: destination.droppableId
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`Server responded with status: ${response.status}`);
-                }
-                
-                const updatedTask = await response.json();
+                const updatedTask = response.data;
                 console.log('Task updated successfully:', updatedTask);
     
-                // Aktualizuj stan lokalny
+                // Update local state
                 setColumns(columns.map(column => {
-                    // Usuń z kolumny źródłowej
+                    // Remove from source column
                     if (column.id === source.droppableId) {
                         const updatedTasks = column.tasks.filter(t => t.id !== taskId);
                         return {
@@ -534,7 +525,7 @@ const TodoList = () => {
                             tasks: updatedTasks
                         };
                     }
-                    // Dodaj do kolumny docelowej
+                    // Add to destination column
                     if (column.id === destination.droppableId) {
                         const updatedTasks = [...column.tasks];
                         updatedTasks.splice(destination.index, 0, updatedTask);
@@ -547,7 +538,7 @@ const TodoList = () => {
                     return column;
                 }));
             } else {
-                // Jeśli przenosimy w tej samej kolumnie
+                // If moving within the same column
                 setColumns(columns.map(column => {
                     if (column.id === source.droppableId) {
                         const updatedTasks = [...column.tasks];

@@ -1,10 +1,10 @@
 // app/api/todos/[todoId]/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { todoId: string } }
 ) {
   try {
@@ -38,7 +38,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { todoId: string } }
 ) {
   try {
@@ -55,8 +55,19 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  }
+  catch (error) {
     console.error("[TODO_DELETE]", error);
     return new NextResponse("Internal error", { status: 500 });
   }
+}
+
+// Add this to ensure OPTIONS requests are handled correctly
+export async function OPTIONS() {
+  return new NextResponse("", {
+    status: 200,
+    headers: {
+      "Allow": "PATCH, DELETE, OPTIONS"
+    }
+  });
 }
