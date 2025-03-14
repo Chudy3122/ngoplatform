@@ -12,10 +12,13 @@ const GuideButton = () => {
   const t = useTranslations();
   const pathname = usePathname();
   
-  // Sprawdzamy czy ścieżka kończy się na /admin lub jest to strona główna w danym języku
-  const isHomePage = pathname ? pathname.endsWith('/admin') : false;
+  // Sprawdzamy czy ścieżka kończy się na /dashboard lub /admin
+  const isVisible = pathname ? (
+    pathname.endsWith('/dashboard') || 
+    pathname.endsWith('/admin')
+  ) : false;
 
-  if (!isHomePage) {
+  if (!isVisible) {
     return null;
   }
   
