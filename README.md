@@ -21,6 +21,7 @@ It is a complex application for handling non-governmental companies.
 The application has 12 modules in it:
 
 Home page,
+Messenger,
 Announcements,
 Events,
 News,
