@@ -46,7 +46,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="fixed inset-0 flex">
       {/* Left panel — branding */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 text-white relative overflow-hidden"
