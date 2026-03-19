@@ -1,21 +1,19 @@
 // app/api/events/[id]/route.ts
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/session';
 import prisma from '@/lib/prisma';
 
 console.log('Route file loaded: api/events/[id]/route.ts');
 
 export async function DELETE(
-  
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }  // zmiana z eventId na id
 ) {
   console.log('DELETE method called with params:', params);
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await getSessionFromRequest(request);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId } = session;
 
     // Upewnij się, że id jest liczbą
     const id = parseInt(params.id);
@@ -25,7 +23,7 @@ export async function DELETE(
 
     // Znajdź wydarzenie wraz z autorem
     const event = await prisma.event.findUnique({
-      where: { 
+      where: {
         id: id  // używamy zmiennej id
       },
       select: {
@@ -42,7 +40,7 @@ export async function DELETE(
     }
 
     // Sprawdź czy użytkownik jest autorem wydarzenia
-    const isAuthor = 
+    const isAuthor =
       event.authorStudentId === userId ||
       event.authorTeacherId === userId ||
       event.authorAdminId === userId ||
@@ -69,7 +67,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Error in DELETE /api/events/[id]:', error);
     return NextResponse.json(
-      { error: "Failed to delete event" }, 
+      { error: "Failed to delete event" },
       { status: 500 }
     );
   }

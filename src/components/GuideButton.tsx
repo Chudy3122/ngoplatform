@@ -26,11 +26,11 @@ const GuideButton = () => {
     <>
       <button
         onClick={() => setIsGuideActive(true)}
-        className="guide-button flex items-center gap-2 bg-white rounded-full p-2 hover:bg-gray-100 transition-colors"
+        className="guide-button flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-white/10 transition-colors text-white/60 hover:text-white/90"
         title={t.guide.title}
       >
-        <BookOpen className="w-5 h-5 text-gray-600" />
-        <span className="hidden md:block text-sm">{t.guide.buttons.start}</span>
+        <BookOpen className="w-4 h-4" />
+        <span className="hidden md:block text-[13px] font-medium">{t.guide.buttons.start}</span>
       </button>
 
       {isGuideActive && (

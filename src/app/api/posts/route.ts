@@ -1,7 +1,7 @@
 // app/api/posts/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 
 interface CustomError {
   name?: string;
@@ -48,7 +48,7 @@ export async function GET() {
     const customError = {
       message: error instanceof Error ? error.message : "An unknown error occurred"
     };
-    
+
     return NextResponse.json({ error: customError.message }, { status: 500 });
   }
 }
@@ -59,24 +59,24 @@ export async function DELETE(req: NextRequest) {
     // Pobierz ID z parametrów URL
     const url = new URL(req.url);
     const idParam = url.searchParams.get("id");
-    
+
     if (!idParam) {
       return NextResponse.json({ error: "Missing post ID" }, { status: 400 });
     }
-    
+
     const postId = parseInt(idParam);
-    
+
     if (isNaN(postId)) {
       return NextResponse.json({ error: "Invalid post ID format" }, { status: 400 });
     }
-    
+
     // Sprawdzenie autoryzacji
-    const authResult = await auth();
-    const userId = authResult?.userId;
-    
-    if (!userId) {
+    const session = await getSessionFromRequest(req);
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { userId, role } = session;
 
     // Sprawdź czy post istnieje i czy należy do użytkownika
     const post = await prisma.post.findUnique({
@@ -89,9 +89,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Dla większej elastyczności - admin też może usuwać posty
-    const { sessionClaims } = authResult;
-    const role = (sessionClaims?.metadata as { role?: string })?.role;
-    const isAdmin = role === "admin";
+    const isAdmin = role === "ADMIN";
 
     if (post.authorId !== userId && !isAdmin) {
       return NextResponse.json({ error: "Unauthorized - you can only delete your own posts" }, { status: 403 });
@@ -127,15 +125,16 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const authResult = await auth();
-    const userId = authResult?.userId;
-    
-    console.log("Auth userId:", userId);
-    if (!userId) {
+    const session = await getSessionFromRequest(req);
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { userId } = session;
+
+    console.log("Auth userId:", userId);
 
     const body = await req.json();
     console.log("Request body:", body);
@@ -154,7 +153,7 @@ export async function POST(req: Request) {
 
     if (!user) {
       // Najpierw sprawdź/utwórz niezbędne powiązane rekordy
-      
+
       // 1. Sprawdź/utwórz domyślny Grade
       let grade = await prisma.grade.findFirst({
         where: { level: 1 }
@@ -168,7 +167,7 @@ export async function POST(req: Request) {
 
       // 2. Sprawdź/utwórz domyślną klasę
       let class_ = await prisma.class.findFirst({
-        where: { 
+        where: {
           gradeId: grade.id,
           name: 'Default Class'
         }
@@ -185,7 +184,7 @@ export async function POST(req: Request) {
       }
 
 
-      
+
       // 3. Sprawdź/utwórz domyślnego rodzica
       let parent = await prisma.parent.findFirst({
         where: { username: 'default_parent' }
@@ -271,12 +270,12 @@ export async function POST(req: Request) {
       message: customError.message,
       stack: customError.stack
     });
-    
+
     return NextResponse.json(
-      { 
-        error: "Internal server error", 
+      {
+        error: "Internal server error",
         details: customError.message,
-        stack: customError.stack 
+        stack: customError.stack
       },
       { status: 500 }
     );

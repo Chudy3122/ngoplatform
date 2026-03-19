@@ -1,7 +1,7 @@
 // components/FileDownload.tsx
 import { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 
 interface FileDownloadProps {
   fileId: string;
@@ -15,9 +15,8 @@ export const FileDownload = ({ fileId, fileName, filePath }: FileDownloadProps) 
   const handleDownload = async () => {
     try {
       setDownloading(true);
-      
-      // Użyj endpointu proxy zamiast bezpośredniego URL Firebase
-      const proxyUrl = `/api/firebase-proxy?path=${encodeURIComponent(filePath)}`;
+
+      const proxyUrl = `/api/download-file?id=${encodeURIComponent(fileId)}`;
       
       // Utwórz link do pobrania
       const a = document.createElement('a');

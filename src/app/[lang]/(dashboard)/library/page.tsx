@@ -10,9 +10,9 @@ export default function LibraryPage() {
   const lang = params?.lang || 'pl';
 
   return (
-    <div className="p-4 bg-[#F7F8FA] min-h-screen">
-      <div className="mb-4">
-        <h1 className="text-2xl font-semibold">{t.library.title}</h1>
+    <div className="p-6">
+      <div className="mb-5">
+        <h1 className="text-xl font-semibold text-slate-800">{t.library.title}</h1>
       </div>
       <FileStorage />
     </div>

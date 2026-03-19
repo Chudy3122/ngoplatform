@@ -1,6 +1,5 @@
 // page.jsx
 "use client";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -17,8 +16,10 @@ export default function ChatOnline({ onlineUsers, currentId, setCurrentChat }) {
   useEffect(() => {
     const getAllUsers = async () => {
       try {
-        const res = await axios.get("/users");
-        setUsers(res.data);
+        const res = await fetch("/users");
+        if (!res.ok) throw new Error(`Failed to fetch users: ${res.status}`);
+        const resData = await res.json();
+        setUsers(resData);
       } catch (err) {
         console.error("Error fetching users:", err);
       }
@@ -33,10 +34,10 @@ export default function ChatOnline({ onlineUsers, currentId, setCurrentChat }) {
 
   const handleClick = async (user) => {
     try {
-      const res = await axios.get(
-        `/conversations/find/${currentId}/${user._id}`
-      );
-      setCurrentChat(res.data);
+      const res = await fetch(`/conversations/find/${currentId}/${user._id}`);
+      if (!res.ok) throw new Error(`Failed to fetch conversation: ${res.status}`);
+      const resData = await res.json();
+      setCurrentChat(resData);
     } catch (err) {
       console.log(err);
     }

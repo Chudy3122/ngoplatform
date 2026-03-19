@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
 // Handle PATCH requests
@@ -8,10 +8,9 @@ export async function PATCH(
   { params }: { params: { todoId: string } }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId } = session;
 
     const body = await req.json();
     const { content, description, startDate, dueDate, status } = body;
@@ -43,10 +42,9 @@ export async function DELETE(
   { params }: { params: { todoId: string } }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId } = session;
 
     await prisma.todo.delete({
       where: {
@@ -68,10 +66,9 @@ export async function GET(
   { params }: { params: { todoId: string } }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId } = session;
 
     const todo = await prisma.todo.findUnique({
       where: {

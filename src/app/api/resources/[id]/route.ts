@@ -1,17 +1,18 @@
 // app/api/resources/[id]/route.ts
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authData = await auth();
-    const role = (authData?.sessionClaims?.metadata as { role?: string })?.role;
+    const session = await getSessionFromRequest(request);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { role } = session;
 
-    if (role !== "admin") {
+    if (role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only admin can delete files" },
         { status: 401 }

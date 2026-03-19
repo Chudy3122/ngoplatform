@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 import { AccessType } from "@prisma/client";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.userId) {
+    const session = await getSessionFromRequest(req);
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.userId;
+    const { userId } = session;
     const { fileId, targetUserIds, accessType } = await req.json();
 
     // Sprawdź, czy wszystkie wymagane pola są obecne

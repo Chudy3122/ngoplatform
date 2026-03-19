@@ -282,7 +282,48 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  html {
+    scroll-behavior: smooth;
+    zoom: 0.8;
+  }
+}
+
+/* ─── Custom scrollbar ──────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* ─── Sidebar nav active indicator ─────────────────── */
+.nav-item-active {
+  @apply bg-brand-50 text-brand-700 font-medium;
+  box-shadow: inset 3px 0 0 #4F46E5;
+}
+.nav-item {
+  @apply text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-150;
+}
+
+/* ─── Card base ─────────────────────────────────────── */
+.card {
+  @apply bg-white rounded-xl border border-slate-200 shadow-sm;
+}
+
+/* ─── Stat card ─────────────────────────────────────── */
+.stat-card {
+  @apply bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-200;
 }
 
 .event-card {

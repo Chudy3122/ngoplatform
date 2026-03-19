@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/context/AuthContext";
 import { useTranslations } from "@/hooks/useTranslations";
-import axios from 'axios';
 import type { ReactNode, ReactElement } from 'react';
 import { 
     DragDropContext, 
@@ -266,11 +265,12 @@ const TodoList = () => {
     });
 
     useEffect(() => {
-        if (user?.id) {
+        if (user?.userId) {
             const fetchTasks = async () => {
                 try {
-                    const response = await axios.get(`/api/todos?userId=${user.id}`);
-                    const tasks = response.data;
+                    const response = await fetch(`/api/todos?userId=${user.userId}`);
+                    if (!response.ok) throw new Error(`Failed to fetch tasks: ${response.status}`);
+                    const tasks = await response.json();
                     const columnData = {
                         todo: tasks.filter((task: Task) => task.status === 'todo'),
                         inProgress: tasks.filter((task: Task) => task.status === 'inProgress'),
@@ -289,7 +289,7 @@ const TodoList = () => {
 
             fetchTasks();
         }
-    }, [user?.id, translations]);
+    }, [user?.userId, translations]);
 
     const updateColumnTitle = (column: Column): string => {
         return `${translations.todoList.columns[column.id]} (${column.tasks.length})`;
@@ -304,7 +304,7 @@ const TodoList = () => {
     };
 
     const addTask = async (columnId: ColumnId) => {
-        if (!newTask.content.trim() || !user?.id) return;
+        if (!newTask.content.trim() || !user?.userId) return;
         
         try {
           const response = await fetch('/api/todos', {
@@ -318,7 +318,7 @@ const TodoList = () => {
               startDate: newTask.startDate,
               dueDate: newTask.dueDate,
               status: columnId,
-              userId: user.id
+              userId: user.userId
             })
           });
       
@@ -369,12 +369,17 @@ const TodoList = () => {
         if (!selectedTask) return;
 
         try {
-            const response = await axios.patch(`/api/todos/${selectedTask.id}`, {
-                ...newTask,
-                status: selectedTask.status
+            const response = await fetch(`/api/todos/${selectedTask.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...newTask,
+                    status: selectedTask.status
+                })
             });
+            if (!response.ok) throw new Error(`Failed to update task: ${response.status}`);
 
-            const updatedTask = response.data;
+            const updatedTask = await response.json();
 
             setColumns(columns.map(column => {
                 if (column.id === selectedTask.status) {
@@ -411,13 +416,18 @@ const TodoList = () => {
         if (!task) return;
     
         try {
-            const response = await axios.post('/api/todos/move', {
-                taskId: taskId,
-                newStatus: targetColumnId
+            const response = await fetch('/api/todos/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    taskId: taskId,
+                    newStatus: targetColumnId
+                })
             });
-    
-            const updatedTask = response.data;
-            
+            if (!response.ok) throw new Error(`Failed to move task: ${response.status}`);
+
+            const updatedTask = await response.json();
+
             setColumns(columns.map(column => {
                 if (column.id === sourceColumnId) {
                     const updatedTasks = column.tasks.filter(t => t.id !== taskId);
@@ -445,7 +455,12 @@ const TodoList = () => {
     const deleteTask = async (columnId: ColumnId, taskId: number) => {
         try {
             // Use the new delete endpoint with POST method
-            await axios.post('/api/todos/delete', { taskId });
+            const response = await fetch('/api/todos/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ taskId })
+            });
+            if (!response.ok) throw new Error(`Failed to delete task: ${response.status}`);
     
             setColumns(columns.map(column => {
                 if (column.id === columnId) {
@@ -506,12 +521,17 @@ const TodoList = () => {
                 // Update task status in database using the dedicated move endpoint
                 console.log(`Updating task ${taskId} status to ${destination.droppableId}`);
                 
-                const response = await axios.post('/api/todos/move', {
-                    taskId: taskId,
-                    newStatus: destination.droppableId
+                const response = await fetch('/api/todos/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        taskId: taskId,
+                        newStatus: destination.droppableId
+                    })
                 });
-                
-                const updatedTask = response.data;
+                if (!response.ok) throw new Error(`Failed to move task: ${response.status}`);
+
+                const updatedTask = await response.json();
                 console.log('Task updated successfully:', updatedTask);
     
                 // Update local state

@@ -4,7 +4,8 @@ import FormContainer from "@/components/FormContainer";
 import Performance from "@/components/Performance";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getSession } from "@/lib/session";
+import { redirect } from "next/navigation";
 import { Class, Student } from "@prisma/client";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,8 +17,9 @@ const SingleStudentPage = async ({
 }: {
   params: { id: string };
 }) => {
-  const authData = await auth();
-  const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
+  const session = await getSession();
+  if (!session) redirect(`/pl/login`);
+  const role = session.role;
   
   const student:
     | (Student & {
@@ -56,7 +58,7 @@ const SingleStudentPage = async ({
                 <h1 className="text-xl font-semibold">
                   {student.name + " " + student.surname}
                 </h1>
-                {role === "admin" && (
+                {role === "ADMIN" && (
                   <FormContainer table="student" type="update" data={student} />
                 )}
               </div>

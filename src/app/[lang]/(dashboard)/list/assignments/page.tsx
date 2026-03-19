@@ -6,7 +6,8 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Assignment, Class, Prisma, Subject, Teacher } from "@prisma/client";
 import Image from "next/image";
-import { auth } from "@clerk/nextjs/server";
+import { getSession } from "@/lib/session";
+import { redirect } from "next/navigation";
 
 type AssignmentList = Assignment & {
   lesson: {
@@ -21,9 +22,9 @@ const AssignmentListPage = async ({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
-  const authData = await auth();
-  const userId = authData.userId;
-  const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
+  const session = await getSession();
+  if (!session) redirect(`/pl/login`);
+  const { userId, role, roleTable } = session;
   const currentUserId = userId;
   
   const columns = [
@@ -45,7 +46,7 @@ const AssignmentListPage = async ({
       accessor: "dueDate",
       className: "hidden md:table-cell",
     },
-    ...(role === "admin" || role === "teacher"
+    ...(role === "ADMIN" || role === "MANAGER"
       ? [
           {
             header: "Actions",
@@ -70,7 +71,7 @@ const AssignmentListPage = async ({
       </td>
       <td>
         <div className="flex items-center gap-2">
-          {(role === "admin" || role === "teacher") && (
+          {(role === "ADMIN" || role === "MANAGER") && (
             <>
               <FormModal table="assignment" type="update" data={item} />
               <FormModal table="assignment" type="delete" id={item.id} />
@@ -115,7 +116,7 @@ const AssignmentListPage = async ({
 
   // ROLE CONDITIONS
 
-  switch (role) {
+  switch (roleTable) {
     case "admin":
       break;
     case "teacher":
@@ -176,10 +177,9 @@ const AssignmentListPage = async ({
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {role === "admin" ||
-              (role === "teacher" && (
-                <FormModal table="assignment" type="create" />
-              ))}
+            {(role === "ADMIN" || role === "MANAGER") && (
+              <FormModal table="assignment" type="create" />
+            )}
           </div>
         </div>
       </div>

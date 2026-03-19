@@ -1,14 +1,13 @@
-// src/app/api/users/search/route.ts
+// src/app/api/users/search.ts
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getAuth } from '@clerk/nextjs/server';
+import { getSessionFromRequest } from '@/lib/session';
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = getAuth(req);
-    if (!userId) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId } = session;
 
     // Pobierz użytkowników z Prismy
     const users = await prisma.user.findMany({
@@ -35,7 +34,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('Error fetching users:', error);
     return NextResponse.json(
-      { message: 'Internal server error' }, 
+      { message: 'Internal server error' },
       { status: 500 }
     );
   }

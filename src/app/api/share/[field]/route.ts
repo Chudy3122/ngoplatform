@@ -1,16 +1,14 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { fileId: string } }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     // Usuń wszystkie udostępnienia dla tego pliku
     await prisma.fileShare.deleteMany({

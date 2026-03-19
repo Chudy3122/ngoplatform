@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
-import Image from "next/image";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import {
   studentSchema,
@@ -19,8 +18,7 @@ import {
   updateTeacher,
 } from "@/lib/actions";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
-import { CldUploadWidget } from "next-cloudinary";
+import toast from "react-hot-toast";
 
 const StudentForm = ({
   type,
@@ -41,7 +39,22 @@ const StudentForm = ({
     resolver: zodResolver(studentSchema),
   });
 
-  const [img, setImg] = useState<any>();
+  const [imgUrl, setImgUrl] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    if (res.ok) {
+      const data = await res.json();
+      setImgUrl(data.url || data.id || "");
+    }
+    setUploading(false);
+  };
 
   const [state, formAction] = useFormState(
     type === "create" ? createStudent : updateStudent,
@@ -54,7 +67,7 @@ const StudentForm = ({
   const onSubmit = handleSubmit((data) => {
     console.log("hello");
     console.log(data);
-    formAction({ ...data, img: img?.secure_url });
+    formAction({ ...data, img: imgUrl });
   });
 
   const router = useRouter();
@@ -105,25 +118,18 @@ const StudentForm = ({
       <span className="text-xs text-gray-400 font-medium">
         Personal Information
       </span>
-      <CldUploadWidget
-        uploadPreset="school"
-        onSuccess={(result, { widget }) => {
-          setImg(result.info);
-          widget.close();
-        }}
-      >
-        {({ open }) => {
-          return (
-            <div
-              className="text-xs text-gray-500 flex items-center gap-2 cursor-pointer"
-              onClick={() => open()}
-            >
-              <Image src="/upload.png" alt="" width={28} height={28} />
-              <span>Upload a photo</span>
-            </div>
-          );
-        }}
-      </CldUploadWidget>
+      <div className="flex flex-col gap-2">
+        <label className="text-xs text-gray-500">Zdjęcie</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="text-sm"
+          disabled={uploading}
+        />
+        {uploading && <span className="text-xs text-gray-400">Przesyłanie...</span>}
+        {imgUrl && <span className="text-xs text-green-500">✓ Przesłano</span>}
+      </div>
       <div className="flex justify-between flex-wrap gap-4">
         <InputField
           label="First Name"

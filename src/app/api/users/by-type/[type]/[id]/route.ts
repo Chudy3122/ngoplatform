@@ -1,13 +1,16 @@
 // app/api/users/by-type/[type]/[id]/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { type: string; id: string } }
 ) {
   try {
+    const session = await getSessionFromRequest(request);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { type, id } = params;
     console.log("Fetching user data:", { type, id });
 

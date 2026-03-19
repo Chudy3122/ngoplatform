@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from '@/hooks/useTranslations';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/context/AuthContext';
 import { format } from 'date-fns';
 import { pl as plLocale, enUS } from 'date-fns/locale';
 import { EventItem } from '@/components/events/EventItem';
@@ -191,7 +191,7 @@ export default function EventList({ limit, compact = false }: EventListProps) {
     }));
     
     try {
-      const response = await fetch(`/api/userprofile?id=${encodeURIComponent(authorId)}`);
+      const response = await fetch(`/api/users/status?userId=${encodeURIComponent(authorId)}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -284,13 +284,13 @@ export default function EventList({ limit, compact = false }: EventListProps) {
         return eventDate.getMonth() === thisMonth && eventDate.getFullYear() === thisYear;
       }).length,
       attending: eventsList.filter(event => 
-        event.participants.some(p => p.userId === user?.id && p.status === 'GOING')
+        event.participants.some(p => p.userId === user?.userId && p.status === 'GOING')
       ).length,
       created: eventsList.filter(event => 
-        event.authorStudent?.id === user?.id ||
-        event.authorTeacher?.id === user?.id ||
-        event.authorAdmin?.id === user?.id ||
-        event.authorParent?.id === user?.id
+        event.authorStudent?.id === user?.userId ||
+        event.authorTeacher?.id === user?.userId ||
+        event.authorAdmin?.id === user?.userId ||
+        event.authorParent?.id === user?.userId
       ).length,
     };
   
@@ -343,20 +343,20 @@ export default function EventList({ limit, compact = false }: EventListProps) {
     const applyFilters = (eventsList: Event[]) => {
       return eventsList.filter(event => {
         if (filters.onlyFree && event.price && event.price > 0) return false;
-        if (filters.onlyGoing && !event.participants.some(p => p.userId === user?.id && p.status === 'GOING')) return false;
-        if (filters.onlyInterested && !event.participants.some(p => p.userId === user?.id && p.status === 'INTERESTED')) return false;
+        if (filters.onlyGoing && !event.participants.some(p => p.userId === user?.userId && p.status === 'GOING')) return false;
+        if (filters.onlyInterested && !event.participants.some(p => p.userId === user?.userId && p.status === 'INTERESTED')) return false;
         if (filters.onlyMyEvents && !(
-          event.authorStudent?.id === user?.id ||
-          event.authorTeacher?.id === user?.id ||
-          event.authorAdmin?.id === user?.id ||
-          event.authorParent?.id === user?.id
+          event.authorStudent?.id === user?.userId ||
+          event.authorTeacher?.id === user?.userId ||
+          event.authorAdmin?.id === user?.userId ||
+          event.authorParent?.id === user?.userId
         )) return false;
         return true;
       });
     };
 
     setFilteredEvents(applyFilters(events));
-  }, [filters, events, user?.id]);
+  }, [filters, events, user?.userId]);
 
   const displayedEvents = limit 
     ? filteredEvents.slice(0, limit) 
@@ -365,7 +365,7 @@ export default function EventList({ limit, compact = false }: EventListProps) {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
@@ -382,12 +382,12 @@ export default function EventList({ limit, compact = false }: EventListProps) {
     <div className={`grid grid-cols-1 ${!compact ? 'lg:grid-cols-4' : ''} gap-6`}>
       <div className={`${!compact ? 'lg:col-span-3' : ''} space-y-4`}>
         {displayedEvents.length === 0 ? (
-          <div className="text-center p-8 bg-gray-50 rounded-lg">
+          <div className="text-center p-8 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-400">
             {t.events.noEvents}
           </div>
         ) : (
           displayedEvents.map((event) => (
-            <div key={event.id} className="bg-gray-50 p-6 rounded-lg">
+            <div key={event.id} className="border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
               <div className="flex flex-col lg:flex-row justify-between items-start mb-4 gap-4">
                 <div className="flex items-start gap-4 w-full lg:w-auto">
                   <div className="flex-shrink-0">
@@ -398,19 +398,19 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                     />
                   </div>
                   <div className="flex-grow">
-                    <h3 className="font-semibold text-lg">{event.title}</h3>
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                    <h3 className="font-semibold text-[15px] text-slate-800">{event.title}</h3>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                       <span>📅 {format(new Date(event.startTime), 'dd.MM.yyyy HH:mm')}</span>
                       {event.endTime && (
                         <span>→ {format(new Date(event.endTime), 'HH:mm')}</span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                    <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">
                       {t.events.createdBy}: {getAuthorDisplayName(event)}
-                      {(event.authorStudent?.id === user?.id ||
-                        event.authorTeacher?.id === user?.id ||
-                        event.authorAdmin?.id === user?.id ||
-                        event.authorParent?.id === user?.id) && (
+                      {(event.authorStudent?.id === user?.userId ||
+                        event.authorTeacher?.id === user?.userId ||
+                        event.authorAdmin?.id === user?.userId ||
+                        event.authorParent?.id === user?.userId) && (
                         <button
                           onClick={() => handleDeleteEvent(event.id)}
                           className="ml-2 p-1 hover:bg-red-100 rounded-full transition-colors"
@@ -438,9 +438,9 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                     <button
                       onClick={() => handleParticipation(event.id, 'GOING')}
                       className={`px-4 py-2 text-sm rounded-full transition-all duration-200 flex items-center gap-2 ${
-                        event.participants.some(p => p.userId === user?.id && p.status === 'GOING')
+                        event.participants.some(p => p.userId === user?.userId && p.status === 'GOING')
                           ? 'bg-green-500 text-white hover:bg-green-600'
-                          : 'bg-gray-100 hover:bg-gray-200'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
                       <span>👤</span>
@@ -449,9 +449,9 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                     <button
                       onClick={() => handleParticipation(event.id, 'INTERESTED')}
                       className={`px-4 py-2 text-sm rounded-full transition-all duration-200 flex items-center gap-2 ${
-                        event.participants.some(p => p.userId === user?.id && p.status === 'INTERESTED')
+                        event.participants.some(p => p.userId === user?.userId && p.status === 'INTERESTED')
                           ? 'bg-blue-500 text-white hover:bg-blue-600'
-                          : 'bg-gray-100 hover:bg-gray-200'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
                       <span>⭐</span>
@@ -467,15 +467,15 @@ export default function EventList({ limit, compact = false }: EventListProps) {
               </div>
   
                {/* Opis wydarzenia bez zmian */}
-               <div className="bg-white p-4 rounded-lg shadow-sm mt-4">
-                <p className="text-gray-700">{event.description}</p>
-                <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-full">
+               <div className="bg-slate-50 p-4 rounded-lg mt-3">
+                <p className="text-slate-600 text-sm leading-relaxed">{event.description}</p>
+                <div className="flex flex-wrap gap-3 mt-3 text-sm text-slate-600">
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 px-3 py-1 rounded-full text-[12px]">
                     <span>📍</span>
                     {event.location}
                   </div>
                   {event.price !== null && (
-                    <div className="flex items-center gap-1 bg-gray-50 px-3 py-1 rounded-full">
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 px-3 py-1 rounded-full text-[12px]">
                       <span>💰</span>
                       {event.price} PLN
                     </div>
@@ -485,7 +485,7 @@ export default function EventList({ limit, compact = false }: EventListProps) {
   
               {/* Lista uczestników ze zaktualizowanymi komponentami */}
               {event.participants.length > 0 && (
-                <div className="mt-4 space-y-4 bg-white p-4 rounded-lg shadow-sm">
+                <div className="mt-3 space-y-4 bg-slate-50 p-4 rounded-lg">
                   {event.participants.filter(p => p.status === 'GOING').length > 0 && (
                     <div>
                       <h4 className="font-medium text-sm mb-2">{t.events.participants.going}:</h4>
@@ -493,7 +493,7 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                         {event.participants
                           .filter(p => p.status === 'GOING')
                           .map((participant) => (
-                            <div key={participant.id} className="flex items-center bg-green-100 rounded-full px-3 py-1">
+                            <div key={participant.id} className="flex items-center bg-green-50 border border-green-200 rounded-full px-3 py-1">
                               <EventParticipant userId={getParticipantId(participant)} size={24} />
                             </div>
                           ))}
@@ -508,7 +508,7 @@ export default function EventList({ limit, compact = false }: EventListProps) {
                         {event.participants
                           .filter(p => p.status === 'INTERESTED')
                           .map((participant) => (
-                            <div key={participant.id} className="flex items-center bg-blue-100 rounded-full px-3 py-1">
+                            <div key={participant.id} className="flex items-center bg-blue-50 border border-blue-200 rounded-full px-3 py-1">
                               <EventParticipant userId={getParticipantId(participant)} size={24} />
                             </div>
                           ))}

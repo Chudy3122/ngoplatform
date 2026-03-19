@@ -1,18 +1,16 @@
 // app/api/events/participation/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId, role } = session;
 
     const { eventId, status } = await req.json();
-    const metadata = (auth() as any).sessionClaims?.metadata || {};
-    const userRole = (metadata.role?.toLowerCase() || '').toUpperCase();
+    const userRole = role;
 
     // Sprawdź czy uczestnictwo już istnieje
     const existingParticipation = await prisma.eventParticipant.findUnique({
@@ -104,7 +102,7 @@ export async function POST(req: Request) {
     const participantsWithDetails = await Promise.all(
       updatedEvent?.participants.map(async (participant) => {
         let userData = null;
-        
+
         switch (participant.userType) {
           case 'STUDENT':
             userData = await prisma.student.findUnique({

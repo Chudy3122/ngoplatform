@@ -27,15 +27,15 @@ const LanguageSwitcher = () => {
       <button 
         onClick={() => setIsOpen(!isOpen)}
         data-guide="language-switcher"
-        className="flex items-center gap-2 bg-white rounded-full p-2 hover:bg-gray-100"
+        className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-white/10 transition-colors text-white/60 hover:text-white/90"
       >
-        <Image 
-          src={languages.find(lang => lang.code === currentLang)?.flag || '/language.png'} 
-          alt="language" 
-          width={20} 
-          height={20} 
+        <Image
+          src={languages.find(lang => lang.code === currentLang)?.flag || '/language.png'}
+          alt="language"
+          width={16}
+          height={16}
         />
-        <span className="hidden md:block text-sm">
+        <span className="hidden md:block text-[13px] font-medium">
           {languages.find(lang => lang.code === currentLang)?.name}
         </span>
       </button>

@@ -134,8 +134,8 @@ const EventCalendar = ({ multiMonth = false, className = "" }: CalendarProps) =>
 
   if (!multiMonth) {
     return (
-      <div className={`bg-white p-4 rounded-lg relative ${className}`} ref={calendarRef}>
-        <h2 className="text-xl font-semibold mb-4">{t.common.calendar.title}</h2>
+      <div className={`relative ${className}`} ref={calendarRef}>
+        <h2 className="text-base font-semibold text-slate-800 mb-4">{t.common.calendar.title}</h2>
         <Calendar
           value={selectedDate}
           onChange={handleDateChange}
@@ -147,7 +147,7 @@ const EventCalendar = ({ multiMonth = false, className = "" }: CalendarProps) =>
         />
         
         <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-3">{t.common.calendar.upcomingEvents}</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3 mt-6">{t.common.calendar.upcomingEvents}</h3>
         </div>
         
         {hoveredDate && (

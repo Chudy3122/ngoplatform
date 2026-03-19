@@ -1,18 +1,17 @@
 // src/app/api/events/delete/route.ts
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionFromRequest } from '@/lib/session';
 import prisma from '@/lib/prisma';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await getSessionFromRequest(request);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId } = session;
 
     // Pobierz ID wydarzenia z ciała żądania
     const { eventId } = await request.json();
-    
+
     // Upewnij się, że eventId jest liczbą
     const id = parseInt(eventId);
     if (isNaN(id)) {
@@ -36,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     // Sprawdź czy użytkownik jest autorem wydarzenia
-    const isAuthor = 
+    const isAuthor =
       event.authorStudentId === userId ||
       event.authorTeacherId === userId ||
       event.authorAdminId === userId ||
@@ -63,7 +62,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error in POST /api/events/delete:', error);
     return NextResponse.json(
-      { error: "Failed to delete event" }, 
+      { error: "Failed to delete event" },
       { status: 500 }
     );
   }

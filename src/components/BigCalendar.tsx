@@ -1,11 +1,19 @@
 "use client";
 
-import { Calendar, momentLocalizer, View, Views } from "react-big-calendar";
-import moment from "moment";
+import { Calendar, dateFnsLocalizer, View, Views } from "react-big-calendar";
+import { format, parse, startOfWeek, getDay } from "date-fns";
+import { pl } from "date-fns/locale";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useState } from "react";
 
-const localizer = momentLocalizer(moment);
+const locales = { pl };
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek: () => startOfWeek(new Date(), { locale: pl }),
+  getDay,
+  locales,
+});
 
 const BigCalendar = ({
   data,

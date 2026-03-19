@@ -1,10 +1,12 @@
 // app/[lang]/(dashboard)/list/resources/page.tsx
-import { auth } from "@clerk/nextjs/server";
+import { getSession } from "@/lib/session";
+import { redirect } from "next/navigation";
 import ResourcesClient from "./ResourcesClient";
 
 export default async function ResourcesPage() {
-  const authData = await auth();
-  const role = (authData?.sessionClaims?.metadata as { role?: string })?.role;
+  const session = await getSession();
+  if (!session) redirect(`/pl/login`);
+  const role = session.role;
 
   return (
     <div className="p-4">

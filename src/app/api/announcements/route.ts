@@ -1,7 +1,7 @@
 // src/app/api/announcements/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 
 // Obsługa CORS
 export function OPTIONS() {
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
         date: 'desc'
       }
     });
-    
+
     return NextResponse.json(announcements);
   } catch (error) {
     console.error("Błąd pobierania ogłoszeń:", error);
@@ -39,34 +39,38 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     // Sprawdzenie uprawnień użytkownika
-    const authData = await auth();
-    const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
-    
+    const session = await getSessionFromRequest(req);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { role } = session;
+
     // Tylko admin może usuwać ogłoszenia
-    if (role !== "admin") {
+    if (role !== "ADMIN") {
       return NextResponse.json({ error: "Brak uprawnień - tylko admin może usuwać ogłoszenia" }, { status: 403 });
     }
-    
+
     // Pobranie ID z URL
     const url = new URL(req.url);
     const idParam = url.searchParams.get("id");
-    
+
     if (!idParam) {
       return NextResponse.json({ error: "Brak parametru ID" }, { status: 400 });
     }
-    
+
     // Konwersja ID do liczby
     const id = parseInt(idParam, 10);
-    
+
     if (isNaN(id)) {
       return NextResponse.json({ error: "Nieprawidłowy format ID" }, { status: 400 });
     }
-    
+
     // Usunięcie ogłoszenia
     await prisma.announcement.delete({
       where: { id }
     });
-    
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Błąd usuwania ogłoszenia:", error);
@@ -82,21 +86,18 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Sprawdzenie czy użytkownik jest zalogowany
-    const authData = await auth();
-    const userId = authData.userId;
-    
-    // Sprawdzamy tylko czy użytkownik jest zalogowany
-    if (!userId) {
+    const session = await getSessionFromRequest(req);
+    if (!session) {
       return NextResponse.json({ error: "Musisz być zalogowany" }, { status: 401 });
     }
-    
+
     // Pobranie danych z żądania
     const data = await req.json();
-    
+
     if (!data.title || !data.description) {
       return NextResponse.json({ error: "Wymagane pola: title, description" }, { status: 400 });
     }
-    
+
     // Tworzenie ogłoszenia - bezpieczna konwersja classId jeśli istnieje
     let classId = null;
     if (data.classId) {
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
         classId = parsedClassId;
       }
     }
-    
+
     const announcement = await prisma.announcement.create({
       data: {
         title: data.title,
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
         classId: classId
       }
     });
-    
+
     return NextResponse.json(announcement);
   } catch (error) {
     console.error("Błąd tworzenia ogłoszenia:", error);

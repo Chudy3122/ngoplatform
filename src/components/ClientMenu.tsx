@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/context/AuthContext";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -13,43 +13,43 @@ const menuItems = [
         icon: "/home.png",
         label: "Strona Główna",
         href: "/",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
       {
         icon: "/student.png",
         label: "Użytkownicy",
         href: "/list/students",
-        visible: ["admin", "teacher"],
+        visible: ["ADMIN", "MANAGER"],
       },
       {
         icon: "/attendance.png",
         label: "Obecność",
         href: "/list/attendance",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
       {
         icon: "/calendar.png",
         label: "Wydarzenia",
         href: "/list/events",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
       {
         icon: "/exam.png",
         label: "Biblioteka",
         href: "/library",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
       {
         icon: "/message.png",
         label: "Wiadomości",
         href: "/list/messages",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
       {
         icon: "/announcement.png",
         label: "Ogłoszenia",
         href: "/list/announcements",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
     ],
   },
@@ -60,19 +60,19 @@ const menuItems = [
         icon: "/profile.png",
         label: "Profil",
         href: "/profile",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
       {
         icon: "/setting.png",
         label: "Ustawienia",
         href: "/settings",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
       {
         icon: "/logout.png",
         label: "Wyloguj",
         href: "/logout",
-        visible: ["admin", "teacher", "student", "parent"],
+        visible: ["ADMIN", "MANAGER", "USER"],
       },
     ],
   },
@@ -84,7 +84,7 @@ const ClientMenu = () => {
 
   useEffect(() => {
     if (isLoaded && user) {
-      setRole(user.publicMetadata.role as string);
+      setRole(user.role as string);
     }
   }, [user, isLoaded]);
 

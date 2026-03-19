@@ -1,17 +1,16 @@
 // app/api/todos/move/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId } = session;
 
     const { taskId, newStatus } = await req.json();
-    
+
     if (!taskId || !newStatus) {
       return new NextResponse("taskId and newStatus are required", { status: 400 });
     }

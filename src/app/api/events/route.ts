@@ -1,9 +1,9 @@
 // app/api/events/route.ts
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const events = await prisma.event.findMany({
       include: {
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
         const participantsWithDetails = await Promise.all(
           event.participants.map(async (participant) => {
             let userData = null;
-            
+
             switch (participant.userType) {
               case 'STUDENT':
                 userData = await prisma.student.findUnique({
@@ -122,38 +122,30 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionFromRequest(req);
     console.log('Session:', session);
-    
-    if (!session?.userId) {
+
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Bezpieczny dostęp do roli używając type assertion
-    const metadata = (session as any).sessionClaims?.metadata || {};
-    const userRole = (metadata.role as string | undefined)?.toLowerCase() || '';
-    
-    console.log('User ID:', session.userId);
+    const { userId, role } = session;
+    const userRole = role.toLowerCase();
+
+    console.log('User ID:', userId);
     console.log('User role:', userRole);
-    
-    if (!userRole) {
-      return NextResponse.json(
-        { error: 'User role not found' },
-        { status: 400 }
-      );
-    }
 
     // Sprawdź typ użytkownika
     const [student, teacher, admin, parent] = await Promise.all([
-      prisma.student.findUnique({ where: { id: session.userId } }),
-      prisma.teacher.findUnique({ where: { id: session.userId } }),
-      prisma.admin.findUnique({ where: { id: session.userId } }),
-      prisma.parent.findUnique({ where: { id: session.userId } })
+      prisma.student.findUnique({ where: { id: userId } }),
+      prisma.teacher.findUnique({ where: { id: userId } }),
+      prisma.admin.findUnique({ where: { id: userId } }),
+      prisma.parent.findUnique({ where: { id: userId } })
     ]);
 
     console.log('Found user records:', {
@@ -174,8 +166,8 @@ export async function POST(req: Request) {
     if (userRole === 'student' && !student) {
       userRecord = await prisma.student.create({
         data: {
-          id: session.userId,
-          username: session.userId,
+          id: userId,
+          username: userId,
           name: 'New',
           surname: 'Student',
           address: 'Default Address',
@@ -191,8 +183,8 @@ export async function POST(req: Request) {
     } else if (userRole === 'teacher' && !teacher) {
       userRecord = await prisma.teacher.create({
         data: {
-          id: session.userId,
-          username: session.userId,
+          id: userId,
+          username: userId,
           name: 'New',
           surname: 'Teacher',
           address: 'Default Address',
@@ -206,16 +198,16 @@ export async function POST(req: Request) {
       // Dodano tworzenie konta administratora
       userRecord = await prisma.admin.create({
         data: {
-          id: session.userId,
-          username: session.userId
+          id: userId,
+          username: userId
         }
       });
       userType = 'admin';
     } else if (userRole === 'parent' && !parent) {
       userRecord = await prisma.parent.create({
         data: {
-          id: session.userId,
-          username: session.userId,
+          id: userId,
+          username: userId,
           name: 'New',
           surname: 'Parent',
           phone: 'default-phone',
@@ -255,7 +247,7 @@ export async function POST(req: Request) {
     // Dodaj ID autora w zależności od typu użytkownika
     const eventData = {
       ...eventBaseData,
-      [`author${userType.charAt(0).toUpperCase() + userType.slice(1)}Id`]: session.userId,
+      [`author${userType.charAt(0).toUpperCase() + userType.slice(1)}Id`]: userId,
     };
 
     console.log('Final event data:', eventData);

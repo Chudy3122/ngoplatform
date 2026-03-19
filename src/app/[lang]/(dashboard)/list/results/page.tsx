@@ -7,7 +7,8 @@ import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma } from "@prisma/client";
 import Image from "next/image";
 
-import { auth } from "@clerk/nextjs/server";
+import { getSession } from "@/lib/session";
+import { redirect } from "next/navigation";
 
 type ResultList = {
   id: number;
@@ -27,9 +28,9 @@ const ResultListPage = async ({
 }: {
   searchParams: { [key: string]: string | undefined };
 }) => {
-  const authData = await auth();
-  const role = (authData.sessionClaims?.metadata as { role?: string })?.role;
-  const currentUserId = authData.userId;
+  const session = await getSession();
+  if (!session) redirect(`/pl/login`);
+  const { role, roleTable, userId: currentUserId } = session;
 
 const columns = [
   {
@@ -60,7 +61,7 @@ const columns = [
     accessor: "date",
     className: "hidden md:table-cell",
   },
-  ...(role === "admin" || role === "teacher"
+  ...(role === "ADMIN" || role === "MANAGER"
     ? [
         {
           header: "Actions",
@@ -87,7 +88,7 @@ const renderRow = (item: ResultList) => (
     </td>
     <td>
       <div className="flex items-center gap-2">
-        {(role === "admin" || role === "teacher") && (
+        {(role === "ADMIN" || role === "MANAGER") && (
           <>
             <FormContainer table="result" type="update" data={item} />
             <FormContainer table="result" type="delete" id={item.id} />
@@ -128,7 +129,7 @@ const renderRow = (item: ResultList) => (
 
   // ROLE CONDITIONS
 
-  switch (role) {
+  switch (roleTable) {
     case "admin":
       break;
     case "teacher":
@@ -217,7 +218,7 @@ const renderRow = (item: ResultList) => (
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {(role === "admin" || role === "teacher") && (
+            {(role === "ADMIN" || role === "MANAGER") && (
               <FormContainer table="result" type="create" />
             )}
           </div>

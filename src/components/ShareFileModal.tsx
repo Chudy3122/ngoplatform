@@ -1,10 +1,10 @@
 import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Users, Upload } from 'lucide-react';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import { Button } from "@/components/ui/button";
 import { Input } from '@/components/ui/input';
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/context/AuthContext";
 import { useTranslations } from "@/hooks/useTranslations";
 
 interface User {
@@ -65,7 +65,7 @@ export const ShareFileModal = ({
 
     try {
       setLoading(true);
-      console.log('Current user ID:', user?.id);
+      console.log('Current user ID:', user?.userId);
       
       const response = await fetch('/api/upload', {
         method: 'POST',

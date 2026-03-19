@@ -1,10 +1,12 @@
 import PostList from '@/components/PostList';
 import AnnouncementsHeader from '@/components/AnnouncementsHeader';
-import { auth } from "@clerk/nextjs/server";
+import { getSession } from "@/lib/session";
+import { redirect } from "next/navigation";
 
 export default async function AnnouncementsPage() {
-  const { sessionClaims } = await auth();
-  const role = (sessionClaims?.metadata as { role?: string })?.role;
+  const session = await getSession();
+  if (!session) redirect(`/pl/login`);
+  const role = session.role;
 
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">

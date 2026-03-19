@@ -1,14 +1,15 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Sprawdzamy autoryzację
-    const authData = await auth();
-    const role = (authData?.sessionClaims?.metadata as { role?: string })?.role;
+    const session = await getSessionFromRequest(request);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { userId, role } = session;
 
-    if (role !== "admin") {
+    if (role !== "ADMIN") {
       return NextResponse.json(
         { error: "Only admin can upload files" },
         { status: 401 }
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
         mimeType: file.type,
         size: file.size,
         section,
-        addedBy: authData.userId || "admin",
+        addedBy: userId || "admin",
       },
     });
 

@@ -1,13 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const session = await getSessionFromRequest(req);
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { userId } = session;
 
     const { postId, type } = await req.json();
 
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
     const customError = {
       message: error instanceof Error ? error.message : "An unknown error occurred"
     };
-    
+
     return NextResponse.json(
       { error: customError.message },
       { status: 500 }

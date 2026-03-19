@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from '@/hooks/useTranslations';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/context/AuthContext';
 import { Post } from '../../types/post';
 
 const DEFAULT_AVATAR = "/noAvatar.png";
@@ -147,7 +147,7 @@ export default function PostList({ limit }: { limit?: number }) {
               </div>
             </div>
             {/* Przycisk usuwania widoczny tylko dla autora */}
-            {user?.id === post.authorId && (
+            {user?.userId === post.authorId && (
               <button
                 onClick={() => handleDeletePost(post.id)}
                 className="text-red-500 hover:text-red-700"

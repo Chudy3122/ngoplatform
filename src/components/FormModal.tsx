@@ -4,10 +4,11 @@ import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { useFormState } from "react-dom";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { toast } from "react-toastify";
+import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
 import { FormContainerProps } from "./FormContainer";
 import {
+ deleteAdmin,
  deleteClass,
  deleteExam,
  deleteStudent,
@@ -15,6 +16,9 @@ import {
  deleteTeacher,
 } from "@/lib/actions";
 
+const AdminForm = dynamic(() => import("./forms/AdminForm"), {
+ loading: () => <h1>Loading...</h1>,
+});
 const TeacherForm = dynamic(() => import("./forms/TeacherForm"), {
  loading: () => <h1>Loading...</h1>,
 });
@@ -36,18 +40,12 @@ type DeleteActions = {
 };
 
 const deleteActionMap: DeleteActions = {
+ admin: deleteAdmin,
  subject: deleteSubject,
  class: deleteClass,
  teacher: deleteTeacher,
  student: deleteStudent,
  exam: deleteExam,
-};
-
-type FormComponent = {
- setOpen: Dispatch<SetStateAction<boolean>>;
- type: "create" | "update";
- data?: any;
- relatedData?: any;
 };
 
 const forms: {
@@ -58,6 +56,13 @@ const forms: {
    relatedData?: any
  ) => JSX.Element;
 } = {
+ admin: (setOpen, type, data) => (
+   <AdminForm
+     setOpen={setOpen}
+     type={type}
+     data={data}
+   />
+ ),
  subject: (setOpen, type, data, relatedData) => (
    <SubjectForm
      setOpen={setOpen}
