@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Share2, Download, Users, Upload } from 'lucide-react';
-import { useUser } from "@clerk/nextjs";
+import { Share2, Download, Users, Upload, File, FileText, Image, Archive } from 'lucide-react';
+import { useUser } from "@/context/AuthContext";
 import { ShareFileModal } from '@/components/ShareFileModal';
-import { toast } from 'react-toastify';
-import { FileCard } from '@/components/FileCard';
+import toast from 'react-hot-toast';
 import { useTranslations } from '@/hooks/useTranslations';
+import { formatDistanceToNow } from 'date-fns';
 
 interface SharedFile {
   id: string;
@@ -14,11 +14,6 @@ interface SharedFile {
   size: number;
   type: string;
   createdAt: Date;
-  fileData?: Buffer | Uint8Array;
-  adminOwnerId?: string;
-  teacherOwnerId?: string;
-  studentOwnerId?: string;
-  parentOwnerId?: string;
   shares: FileShare[];
 }
 
@@ -26,7 +21,6 @@ interface User {
   id: string;
   username?: string;
   email?: string;
-  type?: 'admin' | 'teacher' | 'student' | 'parent';
 }
 
 interface FileShare {
@@ -39,20 +33,19 @@ interface FileShare {
   sharedByTeacherId?: string;
   sharedByStudentId?: string;
   sharedByParentId?: string;
-  sharedToAdminId?: string;
-  sharedToTeacherId?: string;
-  sharedToStudentId?: string;
-  sharedToParentId?: string;
   sharedByAdmin?: User;
   sharedByTeacher?: User;
   sharedByStudent?: User;
   sharedByParent?: User;
-  sharedToAdmin?: User;
-  sharedToTeacher?: User;
-  sharedToStudent?: User;
-  sharedToParent?: User;
   file?: SharedFile;
 }
+
+const getFileIcon = (type: string) => {
+  if (type?.startsWith('image/')) return <Image className="w-8 h-8 text-blue-400" />;
+  if (type?.includes('pdf')) return <FileText className="w-8 h-8 text-red-400" />;
+  if (type?.includes('zip') || type?.includes('rar')) return <Archive className="w-8 h-8 text-yellow-400" />;
+  return <File className="w-8 h-8 text-slate-400" />;
+};
 
 const SharedResourcesPage = () => {
   const t = useTranslations();
@@ -75,11 +68,8 @@ const SharedResourcesPage = () => {
         throw new Error('Failed to fetch shared files');
       }
 
-      const sharedByMeData = await sharedByMeRes.json();
-      const sharedWithMeData = await sharedWithMeRes.json();
-
-      setSharedByMe(sharedByMeData);
-      setSharedWithMe(sharedWithMeData);
+      setSharedByMe(await sharedByMeRes.json());
+      setSharedWithMe(await sharedWithMeRes.json());
       setError(null);
     } catch (err) {
       console.error('Error fetching shared files:', err);
@@ -89,216 +79,154 @@ const SharedResourcesPage = () => {
     }
   }, [t]);
 
-  const handleModalClose = useCallback(() => {
-    setSelectedFile(null);
-  }, []);
-
-  const handleModalSuccess = useCallback(async () => {
-    await fetchSharedFiles();
-  }, [fetchSharedFiles]);
+  useEffect(() => {
+    if (user?.userId) {
+      fetchSharedFiles();
+    }
+  }, [user, fetchSharedFiles]);
 
   const handleRevoke = useCallback(async (fileId: string) => {
     try {
-      const response = await fetch(`/api/share/${fileId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to revoke access');
-      }
-
+      const response = await fetch(`/api/share/${fileId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to revoke access');
       toast.success(t?.sharedResources?.revokeSuccess || 'Access revoked successfully');
       await fetchSharedFiles();
     } catch (err) {
-      console.error('Error revoking access:', err);
       toast.error(t?.sharedResources?.revokeError || 'Failed to revoke access');
-    }
-  }, [fetchSharedFiles, t]);
-
-  const handleDeleteFile = useCallback(async (fileId: string) => {
-    if (!confirm(t?.sharedResources?.deleteConfirm || 'Are you sure you want to delete this file? This action cannot be undone.')) {
-      return;
-    }
-  
-    try {
-      const response = await fetch(`/api/files/${fileId}`, {
-        method: 'DELETE',
-      });
-  
-      if (!response.ok) {
-        throw new Error('Failed to delete file');
-      }
-  
-      toast.success(t?.sharedResources?.deleteSuccess || 'File deleted successfully');
-      await fetchSharedFiles();
-    } catch (err) {
-      console.error('Error deleting file:', err);
-      toast.error(t?.sharedResources?.deleteError || 'Failed to delete file');
     }
   }, [fetchSharedFiles, t]);
 
   const handleDownload = useCallback(async (fileId: string, fileName: string) => {
     try {
-      if (!fileId) {
-        toast.error('Invalid file ID');
-        return;
-      }
-  
-      toast.info('Starting download...');
-      
-      // Użyj prostszego endpointu z parametrem query string
-      const downloadUrl = `/api/download-file?fileId=${encodeURIComponent(fileId)}`;
-      
-      console.log(`Attempting to download file from: ${downloadUrl}`);
-      
       const a = document.createElement('a');
-      a.href = downloadUrl;
+      a.href = `/api/download-file?fileId=${encodeURIComponent(fileId)}`;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      
-      toast.success('Download started');
     } catch (err) {
-      console.error('Error initiating download:', err);
       toast.error('Failed to initiate file download');
     }
   }, []);
 
-  useEffect(() => {
-    const initializeUser = async () => {
-      if (user?.id) {
-        try {
-          const initResponse = await fetch('/api/user/init', {
-            method: 'POST',
-          });
-          
-          if (!initResponse.ok) {
-            console.warn('User initialization warning:', await initResponse.text());
-          }
-
-          await fetchSharedFiles();
-        } catch (error) {
-          console.error('Error during initialization:', error);
-          setError(t?.sharedResources?.initError || 'Failed to initialize user data');
-        }
-      }
-    };
-
-    initializeUser();
-  }, [user, fetchSharedFiles, t]);
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 menu-sharedfiles">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold">{t?.sharedResources?.title || "Shared Resources"}</h1>
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-xl font-semibold text-slate-800">
+          {t?.sharedResources?.title || "Udostępnione pliki"}
+        </h1>
         <button
           onClick={() => setSelectedFile({ id: '', name: 'New Share' })}
-          className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 menu-sharedfiles-upload"
+          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors"
         >
-          <Upload className="w-5 h-5" />
-          {t?.sharedResources?.shareNewFile || "Share New File"}
+          <Upload className="w-4 h-4" />
+          {t?.sharedResources?.shareNewFile || "Udostępnij plik"}
         </button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 text-sm">
           {error}
         </div>
       )}
 
       <div className="grid gap-8">
         {/* Shared by me */}
-        <div className="menu-sharedfiles-by-me">
-          <h2 className="text-xl font-medium mb-4 flex items-center gap-2">
-            <Share2 className="w-5 h-5" />
-            {t?.sharedResources?.sharedByMe || "Shared by me"}
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <Share2 className="w-4 h-4 text-indigo-500" />
+            {t?.sharedResources?.sharedByMe || "Udostępnione przeze mnie"}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {sharedByMe.length === 0 ? (
-              <div className="col-span-full p-8 text-center text-gray-500 bg-white rounded-lg shadow-sm">
-                {t?.sharedResources?.noFilesSharedByMe || "You haven't shared any files yet"}
+              <div className="col-span-full py-10 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200 text-sm">
+                {t?.sharedResources?.noFilesSharedByMe || "Nie udostępniłeś jeszcze żadnych plików"}
               </div>
             ) : (
               sharedByMe.map((file) => (
-                <FileCard
-                  key={file.id}
-                  file={file}
-                  onShare={() => setSelectedFile({ id: file.id, name: file.name })}
-                  onRevoke={() => handleRevoke(file.id)}
-                  onDelete={() => handleDeleteFile(file.id)}
-                />
+                <div key={file.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
+                  <div className="flex items-start gap-3 mb-3">
+                    {getFileIcon(file.type)}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-slate-800 text-sm truncate">{file.name}</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {formatDistanceToNow(new Date(file.createdAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                    {file.shares?.length > 0 && (
+                      <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                        {file.shares.length}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2 pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => setSelectedFile({ id: file.id, name: file.name })}
+                      className="flex-1 text-xs py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      Udostępnij
+                    </button>
+                    {file.shares?.length > 0 && (
+                      <button
+                        onClick={() => handleRevoke(file.id)}
+                        className="flex-1 text-xs py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        Cofnij
+                      </button>
+                    )}
+                  </div>
+                </div>
               ))
             )}
           </div>
         </div>
 
         {/* Shared with me */}
-        <div className="menu-sharedfiles-with-me">
-          <h2 className="text-xl font-medium mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            {t?.sharedResources?.sharedWithMe || "Shared with me"}
+        <div>
+          <h2 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <Users className="w-4 h-4 text-indigo-500" />
+            {t?.sharedResources?.sharedWithMe || "Udostępnione mi"}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {sharedWithMe.length === 0 ? (
-              <div className="col-span-full p-8 text-center text-gray-500 bg-white rounded-lg shadow-sm">
-                {t?.sharedResources?.noFilesSharedWithMe || "No files have been shared with you"}
+              <div className="col-span-full py-10 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200 text-sm">
+                {t?.sharedResources?.noFilesSharedWithMe || "Żaden plik nie został Ci udostępniony"}
               </div>
             ) : (
               sharedWithMe.map((fileShare) => {
-                // Sprawdź czy fileShare i fileShare.file istnieją
-                if (!fileShare || !fileShare.file) {
-                  return null;
-                }
-                
+                if (!fileShare?.file) return null;
                 const file = fileShare.file;
-                
-                // Określ kto udostępnił plik
-                let sharedBy: string = t?.sharedResources?.unknownUser || 'Unknown user';
-                
-                // Próba znalezienia informacji o użytkowniku który udostępnił plik
-                if (fileShare.sharedByAdminId && fileShare.sharedByAdmin) {
-                  sharedBy = fileShare.sharedByAdmin.username || fileShare.sharedByAdmin.email || fileShare.sharedByAdminId;
-                } else if (fileShare.sharedByTeacherId && fileShare.sharedByTeacher) {
-                  sharedBy = fileShare.sharedByTeacher.username || fileShare.sharedByTeacher.email || fileShare.sharedByTeacherId;
-                } else if (fileShare.sharedByStudentId && fileShare.sharedByStudent) {
-                  sharedBy = fileShare.sharedByStudent.username || fileShare.sharedByStudent.email || fileShare.sharedByStudentId;
-                } else if (fileShare.sharedByParentId && fileShare.sharedByParent) {
-                  sharedBy = fileShare.sharedByParent.username || fileShare.sharedByParent.email || fileShare.sharedByParentId;
-                }
-                
+                const sharedBy = fileShare.sharedByAdmin?.username
+                  || fileShare.sharedByTeacher?.username
+                  || fileShare.sharedByStudent?.username
+                  || fileShare.sharedByParent?.username
+                  || t?.sharedResources?.unknownUser || 'Nieznany';
+
                 return (
-                  <div key={file.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        {/* Inicjały użytkownika zamiast avatara */}
-                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                          {sharedBy.charAt(0).toUpperCase()}
-                        </div>
-                        
-                        <div>
-                          <h3 className="font-medium text-gray-900 truncate max-w-[200px]">
-                            {file.name}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            {t?.sharedResources?.sharedBy || "Shared by"} {sharedBy}
-                          </p>
-                        </div>
+                  <div key={file.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 transition-colors">
+                    <div className="flex items-start gap-3">
+                      {getFileIcon(file.type)}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-slate-800 text-sm truncate">{file.name}</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {t?.sharedResources?.sharedBy || "Od"}: {sharedBy}
+                        </p>
                       </div>
                       <button
                         onClick={() => handleDownload(file.id, file.name)}
-                        className="inline-flex items-center p-2 text-gray-500 hover:text-gray-700"
-                        title={t?.sharedResources?.download || "Download"}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title={t?.sharedResources?.download || "Pobierz"}
                       >
-                        <Download className="w-5 h-5" />
+                        <Download className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -314,8 +242,8 @@ const SharedResourcesPage = () => {
           fileId={selectedFile.id}
           fileName={selectedFile.name}
           isOpen={!!selectedFile}
-          onClose={handleModalClose}
-          onSuccess={handleModalSuccess}
+          onClose={() => setSelectedFile(null)}
+          onSuccess={fetchSharedFiles}
         />
       )}
     </div>

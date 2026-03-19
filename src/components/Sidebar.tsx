@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/context/AuthContext';
 
 interface SidebarProps {
   onOpenChat?: () => void;
@@ -15,40 +15,40 @@ const Sidebar: React.FC<SidebarProps> = ({ onOpenChat }) => {
   const lang = params?.lang as string;
   const pathname = usePathname();
   
-  // Pobieranie roli z metadanych użytkownika
-  const role = user?.publicMetadata?.role as string;
+  // Pobieranie roli z sesji użytkownika
+  const role = user?.role as string;
   
   // Elementy menu w zależności od roli
   const menuItems = [
     {
       title: "Dashboard",
       path: `/${lang}/dashboard`, // Uniwersalna ścieżka dashboard
-      roles: ["admin", "student", "teacher", "parent"],
+      roles: ["ADMIN", "MANAGER", "USER"],
     },
     {
       title: "Teachers",
       path: `/${lang}/list/teachers`,
-      roles: ["admin"],
+      roles: ["ADMIN"],
     },
     {
       title: "Students",
       path: `/${lang}/list/students`,
-      roles: ["admin"],
+      roles: ["ADMIN"],
     },
     {
       title: "Parents",
       path: `/${lang}/list/parents`,
-      roles: ["admin"],
+      roles: ["ADMIN"],
     },
     {
       title: "Classes",
       path: `/${lang}/list/classes`,
-      roles: ["admin"],
+      roles: ["ADMIN"],
     },
     {
       title: "Grades",
       path: `/${lang}/list/grades`,
-      roles: ["admin", "teacher", "student", "parent"],
+      roles: ["ADMIN", "MANAGER", "USER"],
     },
     // Dodaj pozostałe elementy menu
   ];

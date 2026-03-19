@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FileText, Book, Package, Upload, Download, Info, Trash2 } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/context/AuthContext";
 import { useTranslations } from "@/hooks/useTranslations";
 import { useParams } from "next/navigation";
 import FileUploadModal from "./FileUploadModal";
@@ -137,13 +137,13 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
           <div className="flex justify-end gap-2 mt-6">
             <button
               onClick={() => setSelectedFile(null)}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
             >
               {t.common.cancel}
             </button>
             <button
               onClick={() => handleDownload(file)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors"
             >
               {t.resources.file.download}
             </button>
@@ -160,7 +160,7 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
         {userRole === 'admin' && (
           <button
             onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors"
           >
             <Upload className="w-4 h-4" />
             {t.resources.upload.button}
@@ -176,7 +176,7 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
               onClick={() => setActiveSection(section.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left mb-2 ${
                 activeSection === section.id
-                  ? "bg-blue-50 text-blue-600"
+                  ? "bg-indigo-50 text-indigo-600 font-medium"
                   : "hover:bg-gray-50"
               }`}
             >
@@ -194,7 +194,7 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
           ) : (
             <div className="grid gap-4">
               {files.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div key={file.id} className="flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:bg-slate-50/50 transition-colors">
                   <div className="flex items-center gap-3">
                     <FileText className="w-5 h-5 text-gray-400" />
                     <div>
@@ -207,7 +207,7 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setSelectedFile(file)}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                      className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
                       title={t.resources.file.info}
                     >
                       <Info className="w-5 h-5" />
@@ -223,7 +223,7 @@ export default function ResourcesClient({ userRole }: ResourcesClientProps) {
                     )}
                     <button
                       onClick={() => handleDownload(file)}
-                      className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      className="flex items-center gap-2 px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm transition-colors"
                     >
                       <Download className="w-4 h-4" />
                       {t.resources.file.download}
