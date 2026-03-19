@@ -309,7 +309,9 @@
 
 /* ─── Sidebar nav active indicator ─────────────────── */
 .nav-item-active {
-  @apply bg-brand-50 text-brand-700 font-medium;
+  background-color: #EEF2FF;
+  color: #4338CA;
+  font-weight: 500;
   box-shadow: inset 3px 0 0 #4F46E5;
 }
 .nav-item {
