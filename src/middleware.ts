@@ -1,68 +1,61 @@
-// src/middleware.ts
-import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { verifySession } from "@/lib/session";
 
 const locales = ["pl", "en"];
 const defaultLocale = "pl";
-const publicPaths = ['/login', '/sign-up']; // Ścieżki dostępne bez logowania
+const publicPaths = ["/login", "/sign-up"];
 
 function getLocale(pathname: string): string {
-  const locale = pathname.split('/')[1];
-  return locales.includes(locale) ? locale : defaultLocale;
+  const segment = pathname.split("/")[1];
+  return locales.includes(segment) ? segment : defaultLocale;
 }
 
-// Funkcja pomocnicza do sprawdzania czy ścieżka jest publiczna
-function isPublicPath(path: string): boolean {
-  return publicPaths.some(publicPath => path.includes(publicPath));
+function isPublicPath(pathname: string): boolean {
+  return publicPaths.some((p) => pathname.includes(p));
 }
 
-export default clerkMiddleware(async (auth, request: NextRequest) => {
-  const { pathname } = new URL(request.url);
-  const locale = getLocale(pathname);
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  // Sprawdź czy to ścieżka API
-  if (pathname.includes('/api/')) {
+  // Pomiń API routes
+  if (pathname.startsWith("/api/")) {
     return NextResponse.next();
   }
 
-  // Jeśli brakuje locale, przekieruj
+  // Dodaj domyślny locale jeśli brakuje
+  const locale = pathname.split("/")[1];
   if (!locales.includes(locale)) {
-    return NextResponse.redirect(new URL(`/${defaultLocale}${pathname}`, request.url));
+    return NextResponse.redirect(
+      new URL(`/${defaultLocale}${pathname}`, request.url)
+    );
   }
 
-  // Pobierz sesję
-  const session = await auth();
+  const token = request.cookies.get("session")?.value;
+  const session = token ? await verifySession(token) : null;
 
-  // Jeśli użytkownik jest zalogowany i próbuje dostać się do strony logowania lub rejestracji
-  if (session?.userId && isPublicPath(pathname)) {
-    // Przekieruj na dashboard zamiast na stronę roli
+  const isPublic = isPublicPath(pathname);
+
+  // Zalogowany próbuje wejść na login/sign-up → redirect na dashboard
+  if (session && isPublic) {
     return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
-  // Jeśli użytkownik jest na głównej stronie, przekieruj na dashboard
-  if (session?.userId && (pathname === `/${locale}` || pathname === `/${locale}/`)) {
+  // Zalogowany na stronie głównej → redirect na dashboard
+  if (
+    session &&
+    (pathname === `/${locale}` || pathname === `/${locale}/`)
+  ) {
     return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 
-  // Jeśli użytkownik nie jest zalogowany i próbuje dostać się do chronionej strony
-  if (!session?.userId && !isPublicPath(pathname)) {
+  // Niezalogowany próbuje wejść na chronioną stronę → redirect na login
+  if (!session && !isPublic) {
     return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
   }
 
-  // Jeśli użytkownik próbuje dostać się do ścieżki specyficznej dla roli (np. /admin, /student)
-  const roleSpecificPaths = ['admin', 'teacher', 'student', 'parent'];
-  const pathSegments = pathname.split('/');
-  if (session?.userId && pathSegments.length > 2 && roleSpecificPaths.includes(pathSegments[2])) {
-    // Przekieruj na dashboard
-    return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
-  }
-
   return NextResponse.next();
-});
+}
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*) "],
 };

@@ -1,77 +1,77 @@
 "use client";
 
-import { useEffect } from 'react';
-import { useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import Menu from "@/components/Menu";
 import Navbar from "@/components/Navbar";
-import { PusherProvider } from "@/context/PusherContext";
+import { AuthProvider } from "@/context/AuthContext";
 
-interface DashboardLayoutProps {
+interface LangLayoutProps {
   children: React.ReactNode;
   params: { lang: string };
 }
 
-export default function DashboardLayout({ children, params }: DashboardLayoutProps) {
-  const { user, isLoaded } = useUser();
+export default function LangLayout({ children, params }: LangLayoutProps) {
   const pathname = usePathname();
-  
-  // Sprawdzamy czy to strona logowania lub rejestracji
-  const isAuthPage = pathname?.includes('/login') || pathname?.includes('/sign-up');
+  const isAuthPage =
+    pathname?.includes("/login") || pathname?.includes("/sign-up");
 
-  useEffect(() => {
-    const initUser = async () => {
-      if (user?.id) {
-        try {
-          const response = await fetch('/api/user/init', { 
-            method: 'POST',
-          });
-          
-          if (!response.ok) {
-            console.error('Failed to initialize user:', await response.text());
-          }
-        } catch (error) {
-          console.error('Error initializing user:', error);
-        }
-      }
-    };
-
-    initUser();
-  }, [user]);
-
-  if (!isLoaded) {
-    return <div>Loading...</div>;
-  }
-
-  // Dla stron logowania i rejestracji, wyświetl tylko dzieci bez menu i bez Pusher
   if (isAuthPage) {
-    return <>{children}</>;
+    return <AuthProvider>{children}</AuthProvider>;
   }
 
-  // Dla pozostałych stron, wyświetl pełny layout z menu i Pusher
   return (
-    <PusherProvider>
-      <div className="h-screen flex">
-        {/* LEFT */}
-        <div className="w-[14%] md:w-[8%] lg:w-[16%] xl:w-[14%] p-4">
+    <AuthProvider>
+      <div className="flex overflow-hidden" style={{ height: "calc(100vh / 0.8)" }}>
+        {/* SIDEBAR */}
+        <aside
+          className="w-[14%] md:w-[8%] lg:w-[220px] xl:w-[240px] flex-shrink-0 flex flex-col"
+          style={{ background: "#0f172a" }}
+        >
+          {/* Logo */}
           <Link
-            href={`/${params.lang}`}
-            className="flex items-center justify-center lg:justify-start gap-2"
+            href={`/${params.lang}/dashboard`}
+            className="flex items-center justify-center lg:justify-start gap-3 px-5 py-[18px] flex-shrink-0 hover:bg-white/5 transition-colors"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
           >
-            <Image src="/logo.png" alt="logo" width={32} height={32} />
-            <span className="hidden lg:block font-bold">NGO-Platform</span>
+            <div className="w-7 h-7 rounded-md bg-indigo-500 flex-shrink-0 flex items-center justify-center text-white font-bold text-xs tracking-tight">
+              NG
+            </div>
+            <span className="hidden lg:block font-bold text-white text-[15px] tracking-tight">
+              NGO Platform
+            </span>
           </Link>
-          <Menu lang={params.lang} />
-        </div>
-        
-        {/* RIGHT */}
-        <div className="w-[86%] md:w-[92%] lg:w-[84%] xl:w-[86%] bg-[#F7F8FA] overflow-scroll flex flex-col">
-          <Navbar />
-          {children}
+
+          {/* Navigation */}
+          <div className="flex-1 overflow-y-auto py-2 hide-scrollbar">
+            <Menu lang={params.lang} />
+          </div>
+
+          {/* Footer */}
+          <div
+            className="hidden lg:block px-5 py-3 flex-shrink-0"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
+          >
+            <p className="text-[10px] text-slate-600 text-center">© 2026 NGO-Platform</p>
+          </div>
+        </aside>
+
+        {/* MAIN CONTENT */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-slate-100">
+          {/* Top Navbar */}
+          <header
+            className="flex-shrink-0 z-10"
+            style={{ background: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+          >
+            <Navbar />
+          </header>
+
+          {/* Page Content */}
+          <main className="flex-1 overflow-y-auto bg-slate-100">
+            {children}
+          </main>
         </div>
       </div>
-    </PusherProvider>
+    </AuthProvider>
   );
 }

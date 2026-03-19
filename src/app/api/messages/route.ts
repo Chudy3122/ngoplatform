@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getAuth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 import { Prisma } from "@prisma/client";
 
 // Dodanie obsługi CORS
@@ -17,11 +17,12 @@ export async function OPTIONS() {
 
 export async function GET(req: NextRequest) {
   try {
-    // Używamy getAuth zamiast auth
-    const { userId } = getAuth(req);
-    if (!userId) {
+    const session = await getSessionFromRequest(req);
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { userId } = session;
 
     const { searchParams } = new URL(req.url);
     const conversationId = searchParams.get('conversationId');
@@ -81,22 +82,22 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     console.log("POST /api/messages - Próba utworzenia nowej wiadomości");
-    
-    // Używamy getAuth zamiast auth
-    const { userId } = getAuth(req);
-    if (!userId) {
-      console.log("Brak autoryzacji - brak userId");
+
+    const session = await getSessionFromRequest(req);
+    if (!session) {
+      console.log("Brak autoryzacji - brak sesji");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { userId } = session;
     console.log("Autoryzowany użytkownik:", userId);
 
     // Pobieranie danych z żądania
     const reqData = await req.json();
     console.log("Dane żądania:", reqData);
-    
+
     const { content, conversationId } = reqData;
-    
+
     if (!content || !conversationId) {
       console.log("Brak wymaganych pól:", { content, conversationId });
       return NextResponse.json(

@@ -1,91 +1,83 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
-export async function POST(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { roleId, roleTable } = session;
+
+    const whereClause =
+      roleTable === 'admin'   ? { adminOwnerId: roleId } :
+      roleTable === 'teacher' ? { teacherOwnerId: roleId } :
+      roleTable === 'student' ? { studentOwnerId: roleId } :
+                                { parentOwnerId: roleId };
+
+    const files = await prisma.libraryFile.findMany({
+      where: whereClause,
+      select: { id: true, name: true, size: true, type: true, createdAt: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return NextResponse.json(files);
+  } catch (error) {
+    console.error('Error listing files:', error);
+    return NextResponse.json({ error: 'Failed to list files' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { roleId, roleTable } = session;
 
     const data = await req.formData();
     const file: File | null = data.get('file') as unknown as File;
+    if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
-
-    // Sprawdzamy typ użytkownika
-    const [admin, teacher, student, parent] = await Promise.all([
-      prisma.admin.findUnique({ where: { id: userId } }),
-      prisma.teacher.findUnique({ where: { id: userId } }),
-      prisma.student.findUnique({ where: { id: userId } }),
-      prisma.parent.findUnique({ where: { id: userId } })
-    ]);
-
-    // Przygotowujemy dane pliku
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    
-    let fileData = {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      fileData: buffer
-    };
+    const fileData = { name: file.name, size: file.size, type: file.type, fileData: buffer };
 
-    let fileRecord;
+    const ownerField =
+      roleTable === 'admin'   ? { adminOwnerId: roleId } :
+      roleTable === 'teacher' ? { teacherOwnerId: roleId } :
+      roleTable === 'student' ? { studentOwnerId: roleId } :
+                                { parentOwnerId: roleId };
 
-    // Dodajemy plik z odpowiednim właścicielem
-    if (admin) {
-      fileRecord = await prisma.libraryFile.create({
-        data: {
-          ...fileData,
-          adminOwnerId: userId
-        }
-      });
-    } else if (teacher) {
-      fileRecord = await prisma.libraryFile.create({
-        data: {
-          ...fileData,
-          teacherOwnerId: userId
-        }
-      });
-    } else if (student) {
-      fileRecord = await prisma.libraryFile.create({
-        data: {
-          ...fileData,
-          studentOwnerId: userId
-        }
-      });
-    } else if (parent) {
-      fileRecord = await prisma.libraryFile.create({
-        data: {
-          ...fileData,
-          parentOwnerId: userId
-        }
-      });
-    } else {
-      console.error('User not found in any role:', userId);
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      id: fileRecord.id,
-      name: fileRecord.name,
-      size: fileRecord.size,
-      type: fileRecord.type
-    });
-
+    const fileRecord = await prisma.libraryFile.create({ data: { ...fileData, ...ownerField } });
+    return NextResponse.json({ id: fileRecord.id, name: fileRecord.name, size: fileRecord.size, type: fileRecord.type });
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json(
-      { error: "Failed to upload file" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { roleId, roleTable } = session;
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: "File ID required" }, { status: 400 });
+
+    const ownerField =
+      roleTable === 'admin'   ? { adminOwnerId: roleId } :
+      roleTable === 'teacher' ? { teacherOwnerId: roleId } :
+      roleTable === 'student' ? { studentOwnerId: roleId } :
+                                { parentOwnerId: roleId };
+
+    const file = await prisma.libraryFile.findFirst({ where: { id, ...ownerField } });
+    if (!file) return NextResponse.json({ error: "File not found or access denied" }, { status: 404 });
+
+    await prisma.libraryFile.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete error:', error);
+    return NextResponse.json({ error: 'Failed to delete file' }, { status: 500 });
   }
 }

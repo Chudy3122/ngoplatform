@@ -1,63 +1,35 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import prisma from "@/lib/prisma";
 
 export const dynamic = 'force-dynamic';
-export async function GET() {
+
+export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { roleId, roleTable } = session;
 
-    // Sprawdź typ użytkownika
-    const [isAdmin, isTeacher, isStudent, isParent] = await Promise.all([
-      prisma.admin.findUnique({ where: { id: userId } }),
-      prisma.teacher.findUnique({ where: { id: userId } }),
-      prisma.student.findUnique({ where: { id: userId } }),
-      prisma.parent.findUnique({ where: { id: userId } })
-    ]);
-
-    // Przygotuj warunki wyszukiwania
-    let whereCondition = {};
-    if (isAdmin) {
-      whereCondition = { sharedToAdminId: userId };
-    } else if (isTeacher) {
-      whereCondition = { sharedToTeacherId: userId };
-    } else if (isStudent) {
-      whereCondition = { sharedToStudentId: userId };
-    } else if (isParent) {
-      whereCondition = { sharedToParentId: userId };
-    } else {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const whereCondition =
+      roleTable === 'admin'   ? { sharedToAdminId: roleId } :
+      roleTable === 'teacher' ? { sharedToTeacherId: roleId } :
+      roleTable === 'student' ? { sharedToStudentId: roleId } :
+                                { sharedToParentId: roleId };
 
     const sharedWithMe = await prisma.fileShare.findMany({
       where: whereCondition,
       include: {
         file: true,
-        // Dodaj informacje o użytkownikach, którzy udostępnili plik - tylko istniejące pola
-        sharedByAdmin: {
-          select: { id: true, username: true, email: true }
-        },
-        sharedByTeacher: {
-          select: { id: true, username: true, email: true }
-        },
-        sharedByStudent: {
-          select: { id: true, username: true, email: true }
-        },
-        sharedByParent: {
-          select: { id: true, username: true, email: true }
-        }
+        sharedByAdmin:   { select: { id: true, username: true, email: true } },
+        sharedByTeacher: { select: { id: true, username: true, email: true } },
+        sharedByStudent: { select: { id: true, username: true, email: true } },
+        sharedByParent:  { select: { id: true, username: true, email: true } }
       }
     });
 
     return NextResponse.json(sharedWithMe);
   } catch (error) {
     console.error("Error getting files shared with me:", error);
-    return NextResponse.json(
-      { error: "Failed to get shared files" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to get shared files" }, { status: 500 });
   }
 }

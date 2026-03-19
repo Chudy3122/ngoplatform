@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Admin {
-  id            String         @id
+  id            String         @id @default(cuid())
   username      String         @unique
   name          String?
   email         String?        @unique
@@ -23,7 +23,7 @@ model Admin {
 }
 
 model Student {
-  id            String         @id
+  id            String         @id @default(cuid())
   username      String         @unique
   name          String?
   surname       String
@@ -56,7 +56,7 @@ model Student {
 }
 
 model Teacher {
-  id            String         @id
+  id            String         @id @default(cuid())
   username      String         @unique
   name          String
   surname       String
@@ -81,7 +81,7 @@ model Teacher {
 }
 
 model Parent {
-  id            String         @id
+  id            String         @id @default(cuid())
   username      String         @unique
   name          String
   surname       String
@@ -382,6 +382,8 @@ model User {
   username  String   @unique
   password  String
   email     String?  @unique
+  role      UserType @default(USER)
+  roleId    String   // ID w tabeli Admin/Teacher/Student/Parent
   createdAt DateTime @default(now())
 }
 
@@ -483,9 +485,8 @@ enum AccessType {
 
 enum UserType {
   ADMIN
-  TEACHER
-  STUDENT
-  PARENT
+  MANAGER
+  USER
 }
 
 enum MessageStatus {

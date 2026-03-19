@@ -1,15 +1,14 @@
 // app/api/users/search/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { auth } from "@clerk/nextjs/server";
+import { getSessionFromRequest } from "@/lib/session";
 
 export const dynamic = 'force-dynamic';
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const session = await getSessionFromRequest(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { roleId } = session;
 
     const url = new URL(req.url);
     const searchQuery = url.searchParams.get('query') || '';
@@ -23,7 +22,7 @@ export async function GET(req: Request) {
             { username: { contains: searchQuery, mode: 'insensitive' } },
             { name: { contains: searchQuery, mode: 'insensitive' } },
           ],
-          NOT: { id: session.userId }
+          NOT: { id: roleId }
         },
         select: {
           id: true,
@@ -41,7 +40,7 @@ export async function GET(req: Request) {
             { name: { contains: searchQuery, mode: 'insensitive' } },
             { surname: { contains: searchQuery, mode: 'insensitive' } },
           ],
-          NOT: { id: session.userId }
+          NOT: { id: roleId }
         },
         select: {
           id: true,
@@ -60,7 +59,7 @@ export async function GET(req: Request) {
             { name: { contains: searchQuery, mode: 'insensitive' } },
             { surname: { contains: searchQuery, mode: 'insensitive' } },
           ],
-          NOT: { id: session.userId }
+          NOT: { id: roleId }
         },
         select: {
           id: true,
@@ -79,7 +78,7 @@ export async function GET(req: Request) {
             { name: { contains: searchQuery, mode: 'insensitive' } },
             { surname: { contains: searchQuery, mode: 'insensitive' } },
           ],
-          NOT: { id: session.userId }
+          NOT: { id: roleId }
         },
         select: {
           id: true,
@@ -93,24 +92,24 @@ export async function GET(req: Request) {
 
     // Łączenie wyników z odpowiednimi rolami
     const formattedResults = [
-      ...admins.map(user => ({ 
-        ...user, 
+      ...admins.map(user => ({
+        ...user,
         role: 'ADMIN',
         displayName: user.name || user.username
       })),
-      ...teachers.map(user => ({ 
-        ...user, 
-        role: 'TEACHER',
+      ...teachers.map(user => ({
+        ...user,
+        role: 'MANAGER',
         displayName: `${user.name} ${user.surname}`
       })),
-      ...parents.map(user => ({ 
-        ...user, 
-        role: 'PARENT',
+      ...parents.map(user => ({
+        ...user,
+        role: 'USER',
         displayName: `${user.name} ${user.surname}`
       })),
-      ...students.map(user => ({ 
-        ...user, 
-        role: 'STUDENT',
+      ...students.map(user => ({
+        ...user,
+        role: 'USER',
         displayName: `${user.name} ${user.surname}`
       }))
     ];

@@ -2,25 +2,17 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useUser } from "@clerk/nextjs";
 
 export default function UserAvatar({ userId, size = 40 }: { userId: string, size?: number }) {
   const [imgSrc, setImgSrc] = useState<string>("/noAvatar.png");
-  const { user } = useUser();
 
   useEffect(() => {
     const fetchAvatar = async () => {
       if (!userId) return;
-      
-      // Jeśli to jest bieżący użytkownik z Clerk, użyj bezpośrednio jego zdjęcia
-      if (user && user.id === userId && user.imageUrl) {
-        setImgSrc(user.imageUrl);
-        return;
-      }
-      
+
       try {
-        const response = await fetch(`/api/userprofile?id=${encodeURIComponent(userId)}`);
-        
+        const response = await fetch(`/api/users/status?userId=${encodeURIComponent(userId)}`);
+
         if (response.ok) {
           const data = await response.json();
           if (data?.img) {
@@ -33,10 +25,10 @@ export default function UserAvatar({ userId, size = 40 }: { userId: string, size
     };
 
     fetchAvatar();
-  }, [userId, user]);
+  }, [userId]);
 
   return (
-    <div className="messageImg" style={{ width: `${size}px`, height: `${size}px` }}>
+    <div style={{ width: `${size}px`, height: `${size}px`, flexShrink: 0 }}>
       <img
         src={imgSrc}
         alt="avatar"
