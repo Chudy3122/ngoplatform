@@ -46,7 +46,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
       {/* Left panel — branding */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 text-white relative overflow-hidden"
@@ -169,12 +169,14 @@ export default function LoginPage() {
               </button>
             </form>
 
+            {/* Rejestracja tylko przez administratora — link tymczasowo ukryty
             <p className="text-center text-sm text-slate-500 mt-6">
               Nie masz konta?{" "}
               <Link href={`/${lang}/sign-up`} className="text-indigo-600 font-medium hover:underline">
                 Zarejestruj się
               </Link>
             </p>
+            */}
           </div>
         </div>
       </div>
