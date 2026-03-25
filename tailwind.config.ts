@@ -11,7 +11,8 @@ const config: Config = {
   	extend: {
   		backgroundImage: {
   			'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-  			'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))'
+  			'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+  			'brand-gradient': 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
   		},
   		colors: {
   			lamaSky: '#C3EBFA',
@@ -20,6 +21,14 @@ const config: Config = {
   			lamaPurpleLight: '#F1F0FF',
   			lamaYellow: '#FAE27C',
   			lamaYellowLight: '#FEFCE8',
+  			brand: {
+  				'50':  '#EEF2FF',
+  				'100': '#E0E7FF',
+  				'200': '#C7D2FE',
+  				'500': '#6366F1',
+  				'600': '#4F46E5',
+  				'700': '#4338CA',
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

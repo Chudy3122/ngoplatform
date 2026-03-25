@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run build)",
+      "Bash(npx prisma generate)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(node -e \":*)",
+      "Bash(node -e \"require\\(''fs''\\).writeFileSync\\(''c:/tmp/upload-route.ts'', ''test''\\)\")",
+      "Bash(git add src/app/api/conversations/route.ts src/app/api/messages/route.ts src/app/api/upload/route.ts src/app/api/share/by-me/route.ts src/app/api/share/with-me/route.ts src/app/api/users/status/route.ts src/app/api/users/search/route.ts src/components/UserAvatar.tsx src/components/conversations/page.jsx src/app/[lang]/\\\\\\(dashboard\\\\\\)/list/messages/page.jsx src/context/OnlineContext.tsx src/lib/session.ts src/app/api/auth src/context/AuthContext.tsx src/middleware.ts src/app/[lang]/login/page.tsx src/app/[lang]/sign-up/page.tsx src/app/layout.tsx src/app/[lang]/layout.tsx src/app/[lang]/\\\\\\(dashboard\\\\\\)/layout.tsx prisma/schema.prisma package.json yarn.lock)"
+    ]
+  }
+}
